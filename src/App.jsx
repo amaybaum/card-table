@@ -67,13 +67,12 @@ const ALL_PASS = SELF_TEST.every((t) => t.pass);
 /* UI — one guided path: four numbered games, one table, one counter.  */
 /* ================================================================== */
 
-const ORDER = ["one", "two", "peek", "cond"];
+const ORDER = ["two", "cond"];
 const GAMES = {
-  one: { name: "The warm-up", sub: "one shuffle" },
-  two: { name: "The surprise", sub: "two shuffles" },
-  peek: { name: "The peek", sub: "two shuffles, but you look" },
-  cond: { name: "The real table", sub: "a conditional shuffle — and a real gamble" },
+  two: { name: "The surprise", sub: "two shuffles — and you may peek" },
+  cond: { name: "The real table", sub: "a conditional shuffle — a real gamble" },
 };
+const TEST_LABEL = { one: "1 shuffle", two: "2 shuffles", peek: "peeked", cond: "conditional" };
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
 const ccol = (b) => (b === 0 ? "#B3392E" : "#1B1B1B");
@@ -88,7 +87,7 @@ function narrate(step, t, game, seat) {
     case "shuffle":
       return insp
         ? `SWAP. Your ${cname(t.h)} just moved INTO the burn pile, and the old burn card (${cname(t.v)}) is now in your hand. Your dealt card is not gone — it is sitting right there, face down.`
-        : `SWAP. Your card and the burn card trade places. Whatever you were dealt is now lying in the burn pile — and a mystery card is in your hand.`;
+        : `SWAP. Your card and the burn card trade places. Whatever you were dealt is now lying in the burn pile — and a mystery card is in your hand. (If the game ended right here, it would be a pure coin flip.)`;
     case "condshuffle":
       return insp
         ? (t.fired
@@ -137,7 +136,6 @@ export default function CardTable() {
 
   const actual = enumerate(game);
   const truth = actual.num / actual.den;
-  const edgeExists = truth !== 0.5;               // house always prices 1/2
   const atShowdown = hand && step === hand.trace.length - 1;
   const beforeShowdown = hand && step === hand.trace.length - 2;
   const cur = hand ? hand.trace[step] : null;
@@ -146,8 +144,18 @@ export default function CardTable() {
   function switchGame(k) { setGame(k); setHand(null); setGuess(null); setBets([]); setLastPlay(null); setHandNo(0); }
   function deal() { setHand(dealHand(game, rng.current)); setStep(0); setGuess(null); }
   function next() {
-    if (beforeShowdown && guess === null && game !== "one") return;
+    if (beforeShowdown && guess === null) return;
     setStep((s) => Math.min(hand.trace.length - 1, s + 1));
+  }
+  function applyPeek() {
+    // taken between the shuffles of the two-shuffle game: burns your card, rebuilds the hand
+    const d = hand.trace[0], s1 = hand.trace[1];
+    const seen = s1.v, freshH = rng.current() < 0.5 ? 0 : 1;
+    const [v2, h2] = swap([s1.v, freshH]);
+    const t = [d, s1, { label: "peek", v: s1.v, h: freshH, peeked: seen },
+               { label: "shuffle2", v: v2, h: h2 }, { label: "showdown", v: v2, h: h2 }];
+    setHand({ dealt: d.v, final: v2, match: v2 === d.v, peeked: true, trace: t });
+    setStep(2); setGuess(null);
   }
 
   // The counter: the house lazily prices EVERY ticket at 1/2 ("each shuffle is 50/50").
@@ -237,7 +245,7 @@ export default function CardTable() {
               <div style={{ margin: "16px auto 0", maxWidth: 520, textAlign: "center", fontSize: 14.5, lineHeight: 1.55, minHeight: 44 }}>
                 {narrate(hand, cur, game, seat)}
               </div>
-              {beforeShowdown && guess === null && game !== "one" && (
+              {beforeShowdown && guess === null && (
                 <div style={{ textAlign: "center", marginTop: 14 }}>
                   <div style={{ fontSize: 13.5, marginBottom: 8 }}>Before you look — the odds your card matches your deal?</div>
                   <button onClick={() => setGuess("half")} style={btn(insp)}>50 / 50</button>{" "}
@@ -248,17 +256,23 @@ export default function CardTable() {
               {atShowdown && (
                 <div style={{ margin: "14px auto 0", maxWidth: 560, fontSize: 13.5, lineHeight: 1.6, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 10, padding: "12px 14px" }}>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                    True odds: {oddsStr}
-                    {guess && (() => { const correct = actual.den === 1 ? "sure" : actual.num === 1 ? "half" : "partial";
+                    True odds: {hand.peeked ? "1 in 2 — your peek reset them" : oddsStr}
+                    {guess && (() => { const correct = hand.peeked ? "half" : actual.den === 1 ? "sure" : actual.num === 1 ? "half" : "partial";
                       const names = { sure: "certain", half: "50/50", partial: "in between" };
                       return ` — you guessed ${names[guess]}${guess === correct ? " \u2713" : ""}`; })()}
                   </div>
-                  {EXPLAIN[game]}
+                  {hand.peeked ? EXPLAIN.peek + " At the counter, this hand was worth +½ to you before you looked. The peek spent it — the cost of looking, measured in chips." : EXPLAIN[game]}
+                </div>
+              )}
+              {game === "two" && !hand.peeked && step === 1 && (
+                <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}>
+                  Your call: play on blind, or look at your card now?{" "}
+                  <button onClick={applyPeek} style={btn(insp)}>peek (burns your card)</button>
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
                 <button onClick={() => setStep(Math.max(0, step - 1))} style={btn(insp)} disabled={step === 0}>&larr; back</button>
-                <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown || (beforeShowdown && guess === null && game !== "one")}>
+                <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown || (beforeShowdown && guess === null)}>
                   {beforeShowdown ? "showdown \u2192" : "next \u2192"}
                 </button>
                 <button onClick={deal} style={btn(insp)}>redeal</button>
@@ -273,18 +287,18 @@ export default function CardTable() {
           <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6, margin: "6px 0 10px" }}>
             The house sells a ticket that pays 1 chip if your card matches — and it prices every game
             the lazy way: &ldquo;each shuffle is 50/50, so a ticket costs <b>½</b>.&rdquo; You know the true odds
-            of this game: <b>{oddsStr}</b>.{" "}
-            {edgeExists
-              ? <b>The house is wrong here. Buy.</b>
-              : <>Here the lazy price happens to be right — there is nothing to buy. (And if <i>you</i> were the one
-                 selling tickets at the lazy price, this money would flow the other way. Mispricing is a transfer, not a fine.)</>}
+            of this game: <b>{oddsStr}</b>. <b>The house is wrong here. Buy.</b>{" "}
+            <span style={{ opacity: 0.85 }}>This counter moves only because lazy reasoning fails — it is an
+            interference meter. (Sell at the lazy price yourself and the money flows the other way:
+            mispricing is a transfer, not a fine. And tickets are sold on unpeeked hands only —
+            a peeked hand has no edge left to buy.)</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 26, fontWeight: 700 }}>
               {bankroll} <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.7 }}>chips</span>
             </div>
-            <button onClick={() => buy(1)} style={btn(insp)} disabled={!edgeExists}>Buy a ticket (½)</button>
-            <button onClick={() => buy(100)} style={btn(insp)} disabled={!edgeExists}>Buy 100</button>
+            <button onClick={() => buy(1)} style={btn(insp)}>Buy a ticket (½)</button>
+            <button onClick={() => buy(100)} style={btn(insp)}>Buy 100</button>
             <button onClick={() => { setBankroll(100); setBets([]); setLastPlay(null); setHandNo(0); }} style={btn(insp)}>Reset</button>
           </div>
           {lastPlay && (
@@ -313,7 +327,7 @@ export default function CardTable() {
         {/* audit + boundary */}
         <div style={{ marginTop: 16, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace" }}>
-            engine self-test: {ALL_PASS ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${GAMES[t.p].name} ${t.got}`).join(" \u00B7 ")}) — the entire engine is ~60 lines at the top of this file. Read it: there is no trick to find.
+            engine self-test: {ALL_PASS ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" · ")}) — the entire engine is ~60 lines at the top of this file. Read it: there is no trick to find.
           </div>
           <div style={{ marginTop: 8 }}>
             Honest boundary: this is a local classical mechanism. It reproduces interference, indivisibility,
