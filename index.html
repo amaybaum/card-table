@@ -11,8 +11,7 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react">
-const { useState, useRef } = React;
+<script type="text/babel" data-presets="react">\nconst { useState, useRef } = React;
 
 /* ================================================================== */
 /* ENGINE — pure, framework-free, exact. The physics lives here.       */
@@ -132,15 +131,23 @@ function CardTable() {
     if (beforeShowdown && guess === null && game !== "one") return; // ask for the prediction first
     setStep((s) => Math.min(hand.trace.length - 1, s + 1));
   }
+  // You are the bookmaker: you post a price for a ticket that pays 1 chip on MATCH.
+  // A sharp takes whichever side of your price is profitable. Your expected loss per
+  // hand is |true odds - your price| — exactly the interference term.
   function playBets(n) {
     let bk = bankroll; const hist = [...bets];
-    const p = sheet === "street" ? 0.5 : actual.num / actual.den;
+    const price = sheet === "street" ? 0.5 : actual.num / actual.den;
+    const truth = actual.num / actual.den;
     for (let i = 0; i < n; i++) {
       const h = dealHand(game, rng.current);
-      if (p >= 0.5) bk += h.match ? 1 : -1;      // even-money bet on "match" when your sheet calls it fair
-      hist.push(h.match);
+      const outcome = h.match ? 1 : 0;
+      let pnl = null;                            // null = priced right, sharp declines
+      if (truth > price) pnl = price - outcome;  // sharp buys your ticket
+      else if (truth < price) pnl = outcome - price; // sharp sells you the ticket
+      if (pnl !== null) bk += pnl;
+      hist.push({ pnl, match: h.match });
     }
-    setBankroll(bk); setBets(hist.slice(-300));
+    setBankroll(Math.round(bk * 2) / 2); setBets(hist.slice(-300));
   }
 
   return (
@@ -187,7 +194,7 @@ function CardTable() {
         <div style={{ marginTop: 18, fontWeight: 700, fontSize: 14 }}>Pick a game</div>
         <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           {Object.entries(GAMES).map(([k, gm]) => (
-            <button key={k} onClick={() => { setGame(k); setHand(null); setGuess(null); }}
+            <button key={k} onClick={() => { setGame(k); setHand(null); setGuess(null); setBets([]); }}
               style={{ flex: "1 1 175px", textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: world.panel, color: world.ink, border: game === k ? `2px solid ${insp ? "#23404A" : "#C9A227"}` : "1px solid rgba(128,128,128,.35)" }}>
               <div style={{ fontWeight: 700, fontSize: 13.5 }}>{gm.name}</div>
               <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 2 }}>{gm.tag}</div>
@@ -249,18 +256,22 @@ function CardTable() {
 
         {/* ---------- the bet ---------- */}
         <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Round two: put money on it</div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Round two: you're the bookmaker</div>
           <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6, margin: "6px 0 10px" }}>
-            You bet 1 chip, even money, that your card matches — whenever your chosen way of
-            reasoning says the bet is fair. Two ways to reason:
-            <b> street-by-street</b> (&ldquo;each shuffle is 50/50, so after any number of shuffles it's 50/50&rdquo;)
-            or <b>whole-hand</b> (the exact odds for the full game, from the table above).
-            On <i>{GAMES[game].name.toLowerCase()}</i> they {actual.den === 1 ? <b>disagree — so one of them loses money. Find out which.</b> : "agree, so betting is a wash."}
+            Each hand, you must <b>post a price</b> for a ticket that pays 1 chip if the card matches.
+            A sharp at your table takes whichever side of your price makes money — and declines if your
+            price is exactly right. Price your tickets{" "}
+            <b>street-by-street</b> (&ldquo;each shuffle is 50/50, so the ticket is worth &frac12; chip&rdquo;)
+            or <b>whole-hand</b> (the exact odds of the full game).
+            On <i>{GAMES[game].name.toLowerCase()}</i>{" "}
+            {actual.den === 1
+              ? <b>the two prices disagree — one bookmaker is about to get picked clean. Find out which.</b>
+              : "both methods post the same, correct price — the sharp finds nothing to take."}
           </div>
           <div style={{ fontSize: 13, marginBottom: 10 }}>
-            Reason{" "}
-            <button onClick={() => setSheet("street")} style={pill(sheet === "street", insp)}>street-by-street</button>{" "}
-            <button onClick={() => setSheet("whole")} style={pill(sheet === "whole", insp)}>whole-hand</button>
+            Price{" "}
+            <button onClick={() => { setSheet("street"); setBets([]); }} style={pill(sheet === "street", insp)}>street-by-street ({"½"})</button>{" "}
+            <button onClick={() => { setSheet("whole"); setBets([]); }} style={pill(sheet === "whole", insp)}>whole-hand ({actual.num}/{actual.den})</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 26, fontWeight: 700 }}>
@@ -271,11 +282,23 @@ function CardTable() {
             <button onClick={() => { setBankroll(100); setBets([]); }} style={btn(insp)}>Reset</button>
           </div>
           {bets.length > 0 && (
-            <div style={{ marginTop: 10, height: 14, display: "flex", gap: 1 }}>
-              {bets.slice(-80).map((m, i) => (
-                <div key={i} style={{ flex: 1, borderRadius: 1, background: m ? (insp ? "#1c6e46" : "#D8C878") : "#c05b52" }} />
-              ))}
-            </div>
+            <>
+              <div style={{ marginTop: 10, height: 14, display: "flex", gap: 1 }}>
+                {bets.slice(-80).map((b, i) => (
+                  <div key={i} title={b.pnl === null ? "no trade" : (b.pnl > 0 ? "you won" : "sharp won")}
+                    style={{ flex: 1, borderRadius: 1, background: b.pnl === null ? "rgba(128,128,128,.45)" : b.pnl > 0 ? (insp ? "#1c6e46" : "#D8C878") : "#c05b52" }} />
+                ))}
+              </div>
+              <div style={{ marginTop: 8, fontSize: 12.5, fontFamily: "ui-monospace, Menlo, monospace", opacity: 0.9 }}>
+                {(() => {
+                  const traded = bets.filter((b) => b.pnl !== null);
+                  if (!traded.length) return "The sharp hasn't taken a single ticket. Your prices are right.";
+                  const rate = traded.reduce((s, b) => s + b.pnl, 0) / bets.length;
+                  return `Rate: ${rate >= 0 ? "+" : ""}${rate.toFixed(2)} chips/hand over ${bets.length} hands` +
+                    (rate < 0 ? " — that number IS the interference term, collected in cash." : "");
+                })()}
+              </div>
+            </>
           )}
         </div>
 
@@ -327,9 +350,4 @@ function PlayCard({ bit, faceUp, label }) {
 const btn = (insp) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 600, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid rgba(128,128,128,.5)", background: insp ? "#fff" : "rgba(255,255,255,.12)", color: "inherit" });
 const pill = (on, insp) => ({ ...btn(insp), borderRadius: 999, padding: "4px 12px", background: on ? (insp ? "#23404A" : "#C9A227") : "transparent", color: on ? (insp ? "#F2F4F1" : "#1B1B1B") : "inherit" });
 const link = (ink) => ({ background: "none", border: "none", cursor: "pointer", color: ink, padding: 0 });
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(CardTable));
-
-</script>
-</body>
-</html>
+\nReactDOM.createRoot(document.getElementById("root")).render(React.createElement(CardTable));\n\n</script>\n</body>\n</html>
