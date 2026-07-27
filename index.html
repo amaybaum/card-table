@@ -111,6 +111,7 @@ function CardTable() {
   const [step, setStep] = useState(0);
   const [guess, setGuess] = useState(null);      // your prediction before showdown
   const [rulesOpen, setRulesOpen] = useState(true);
+  const [why, setWhy] = useState({});
   const [bankroll, setBankroll] = useState(100);
   const [bets, setBets] = useState([]);
   const [sheet, setSheet] = useState("street");
@@ -159,9 +160,15 @@ function CardTable() {
           </button>
           {rulesOpen && (
             <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
-              <li><b>The deal.</b> You get one card, red or black, even odds. One <b>burn card</b> — also red or black — lies face down beside the deck. The question in every game: <i>at showdown, does your card match the one you were dealt?</i></li>
-              <li><b>The shuffle.</b> There is exactly one shuffle move, and it is not random: <b>your card and the burn card trade places.</b> That's it. Every game below is just deals and swaps.</li>
-              <li><b>Looking costs.</b> If you peek at a card mid-game, that card is immediately burned and replaced with a fresh one. Looking is a physical act with consequences — not a free glance.</li>
+              <Rule n={1} why={why} setWhy={setWhy} ink={world.ink}
+                text={<><b>The deal.</b> You get one card, red or black, even odds. One <b>burn card</b> — also red or black — lies face down beside the deck. The question in every game: <i>at showdown, does your card match the one you were dealt?</i></>}
+                whyText={<>This is the <b>only randomness in the entire game</b>, and it stands for one thing: you don't know the world's starting conditions. Every move after the deal is fixed by the rules — so whatever strangeness the odds show later, there are no dice in the machinery to blame it on. And the burn card is the whole point: the world contains more than your seat can see, and the rules are allowed to use that part too.</>} />
+              <Rule n={2} why={why} setWhy={setWhy} ink={world.ink}
+                text={<><b>The shuffle.</b> There is exactly one shuffle move, and it is not random: <b>your card and the burn card trade places.</b> That's it. Every game below is just deals and swaps.</>}
+                whyText={<>Two deliberate choices. <b>Deterministic:</b> same input, same result, every time — so probability can only ever come from what you can't see, never from the rules. <b>Reversible:</b> a swap undoes itself, so nothing is ever erased — information about your deal can <i>hide</i>, but the dynamics cannot destroy it. The swap is simply the smallest move that couples what you see to what you don't. The framework's real physics is built from exactly these two properties.</>} />
+              <Rule n={3} why={why} setWhy={setWhy} ink={world.ink}
+                text={<><b>Looking costs.</b> If you peek at a card mid-game, that card is immediately burned and replaced with a fresh one. Looking is a physical act with consequences — not a free glance.</>}
+                whyText={<>In this toy, honestly: it's a house rule. A plain card wouldn't care if you glanced at it — and without this rule, the two-shuffle game would stay certain even after a peek. The toy <i>imposes</i> what real physics <i>derives</i>. In physics there is no passive glance: to see a card you must interact with it — bounce light off it, correlate a camera or an eye with its value. <b>Looking is copying</b> — a record of the card now exists somewhere in the world. And the certainty in the two-shuffle game was <i>made of</i> a correlation: the burn card remembering your deal, waiting to hand it back. Copying the card's value into a new record rearranges exactly those correlations, and the clean hand-back is gone. Sharpest form: minds are irrelevant. A machine that photographs the card and shows the photo to no one destroys the certainty just as thoroughly. What costs is that the record <i>exists</i> — not that anyone reads it.</>} />
             </ol>
           )}
         </div>
@@ -285,6 +292,24 @@ function CardTable() {
         </div>
       </div>
     </div>
+  );
+}
+
+function Rule({ n, text, whyText, why, setWhy, ink }) {
+  const open = !!why[n];
+  return (
+    <li style={{ marginBottom: 8 }}>
+      {text}{" "}
+      <button onClick={() => setWhy({ ...why, [n]: !open })}
+        style={{ background: "none", border: "none", cursor: "pointer", color: ink, opacity: 0.8, fontSize: 12.5, textDecoration: "underline", padding: 0, fontFamily: "inherit" }}>
+        {open ? "hide" : "why?"}
+      </button>
+      {open && (
+        <div style={{ fontSize: 12.5, lineHeight: 1.6, opacity: 0.92, margin: "6px 0 4px", paddingLeft: 12, borderLeft: "2px solid rgba(128,128,128,.45)" }}>
+          {whyText}
+        </div>
+      )}
+    </li>
   );
 }
 
