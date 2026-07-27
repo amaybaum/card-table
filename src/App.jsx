@@ -2,8 +2,8 @@ import { useState, useRef } from "react";
 
 /* ================================================================== */
 /* ENGINE — pure, framework-free, exact. The physics lives here.       */
-/* State (v, h): your hole card, the burn card; 0 = red, 1 = black.    */
-/* The shuffle is the swap (v, h) -> (h, v).                           */
+/* State (v, h[, p]): your card, the burn card, the dealer's pocket.   */
+/* The shuffle is the swap (v, h) -> (h, v). Nothing else exists.      */
 /* ================================================================== */
 
 const swap = ([v, h]) => [h, v];
@@ -12,24 +12,22 @@ function enumerate(game) {
   const cases = [];
   if (game === "cond") {
     for (const v0 of [0, 1]) for (const h0 of [0, 1]) for (const p0 of [0, 1]) {
-      let [v, h] = p0 === 1 ? swap([v0, h0]) : [v0, h0];  // conditional shuffle
-      [v, h] = swap([v, h]);                               // full shuffle
+      let [v, h] = p0 === 1 ? swap([v0, h0]) : [v0, h0];
+      [v, h] = swap([v, h]);
       cases.push(v === v0);
     }
-    const n = cases.filter(Boolean).length, d = cases.length;
-    const g0 = (a, b) => (b ? g0(b, a % b) : a || 1); const k0 = g0(n, d);
-    return { num: n / k0 || 0, den: n === 0 ? 1 : d / k0 };
-  }
-  for (const v0 of [0, 1]) for (const h0 of [0, 1]) {
-    if (game === "peek") {
-      for (const h2 of [0, 1]) {
-        const s1 = swap([v0, h0]); const s2 = swap([s1[0], h2]);
-        cases.push(s2[0] === v0);
+  } else {
+    for (const v0 of [0, 1]) for (const h0 of [0, 1]) {
+      if (game === "peek") {
+        for (const h2 of [0, 1]) {
+          const s1 = swap([v0, h0]); const s2 = swap([s1[0], h2]);
+          cases.push(s2[0] === v0);
+        }
+      } else {
+        const s1 = swap([v0, h0]);
+        const last = game === "one" ? s1 : swap(s1);
+        cases.push(last[0] === v0);
       }
-    } else {
-      const s1 = swap([v0, h0]);
-      const last = game === "one" ? s1 : swap(s1);
-      cases.push(last[0] === v0);
     }
   }
   const n = cases.filter(Boolean).length, d = cases.length;
@@ -66,45 +64,45 @@ const SELF_TEST = Object.entries(TABLE).map(([p, [n, d]]) => {
 const ALL_PASS = SELF_TEST.every((t) => t.pass);
 
 /* ================================================================== */
-/* UI                                                                  */
+/* UI — one guided path: four numbered games, one table, one counter.  */
 /* ================================================================== */
 
+const ORDER = ["one", "two", "peek", "cond"];
 const GAMES = {
-  one: { name: "Warm-up: one shuffle", tag: "get a feel for the swap" },
-  two: { name: "The surprise: two shuffles", tag: "the whole point of this app" },
-  peek: { name: "The peek: two shuffles, but you look", tag: "what looking costs" },
-  cond: { name: "The real table: a conditional shuffle", tag: "partial interference — and finally, a real gamble" },
+  one: { name: "The warm-up", sub: "one shuffle" },
+  two: { name: "The surprise", sub: "two shuffles" },
+  peek: { name: "The peek", sub: "two shuffles, but you look" },
+  cond: { name: "The real table", sub: "a conditional shuffle — and a real gamble" },
 };
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
 const ccol = (b) => (b === 0 ? "#B3392E" : "#1B1B1B");
 
-// Narration: one plain sentence per step, per seat.
 function narrate(step, t, game, seat) {
   const insp = seat === "inspector";
   switch (t.label) {
     case "deal":
       return insp
-        ? `You are dealt ${cname(t.v)}. The burn card happens to be ${cname(t.h)} — you can see everything from up here.`
-        : `You are dealt ${cname(t.v)}. A burn card lies face down beside the deck. Nobody knows what it is.`;
+        ? `You are dealt ${cname(t.v)}. The burn card happens to be ${cname(t.h)}${game === "cond" ? `, the dealer's pocket card is ${cname(t.p)}` : ""} — you can see everything from up here.`
+        : `You are dealt ${cname(t.v)}. A burn card lies face down beside the deck.${game === "cond" ? " The dealer also holds a hidden pocket card." : ""} Nobody at your seat knows the hidden cards.`;
     case "shuffle":
       return insp
         ? `SWAP. Your ${cname(t.h)} just moved INTO the burn pile, and the old burn card (${cname(t.v)}) is now in your hand. Your dealt card is not gone — it is sitting right there, face down.`
         : `SWAP. Your card and the burn card trade places. Whatever you were dealt is now lying in the burn pile — and a mystery card is in your hand.`;
-    case "peek":
-      return insp
-        ? `You peek: ${cname(t.peeked)}. House rule: a seen card is burned and replaced with a fresh one (${cname(t.h)} landed in the pile). The card that remembered your deal is gone.`
-        : `You peek at your card: ${cname(t.peeked)}. House rule: a seen card is burned and replaced with a fresh, unrelated one. Looking is not free.`;
     case "condshuffle":
       return insp
         ? (t.fired
-            ? `The dealer's pocket card is BLACK — the conditional shuffle FIRES: your ${cname(t.h)} moved into the burn pile.`
+            ? `The dealer's pocket card is BLACK — the conditional shuffle FIRES: your dealt card moved into the burn pile.`
             : `The dealer's pocket card is RED — the conditional shuffle does NOT fire. Nothing moves.`)
-        : `The dealer checks a pocket card you cannot see. If it's black, your card and the burn card trade places; if red, nothing moves. Something may or may not have just happened.`;
+        : `The dealer checks the pocket card. If it's black, your card and the burn card trade places; if red, nothing moves. Something may or may not have just happened.`;
+    case "peek":
+      return insp
+        ? `You peek: ${cname(t.peeked)}. House rule: a seen card is burned and replaced with a fresh one. The card that remembered your deal is gone.`
+        : `You peek at your card: ${cname(t.peeked)}. House rule: a seen card is burned and replaced with a fresh, unrelated one. Looking is not free.`;
     case "shuffle2":
       return insp
-        ? `SWAP again. The burn pile hands back whatever it was holding — which is ${game === "two" ? "your original card, coming home" : "the fresh replacement, which knows nothing about your deal"}.`
-        : `SWAP again. Your card and the burn card trade places once more.`;
+        ? `SWAP. The burn pile hands back whatever it was holding.`
+        : `SWAP. Your card and the burn card trade places${game === "cond" ? "" : " once more"}.`;
     case "showdown":
       return `SHOWDOWN. Your card: ${cname(t.v)}. You were dealt ${cname(step.dealt)}. ${step.match ? "MATCH." : "NO MATCH."}`;
     default: return "";
@@ -114,24 +112,22 @@ function narrate(step, t, game, seat) {
 const EXPLAIN = {
   one: "One swap hands you the burn card, and the burn card was 50/50. One shuffle = a coin flip. Nothing strange yet.",
   two: "Each swap alone is a coin flip — yet two of them are a guarantee. The first swap hid your card in the burn pile; the second handed it back. Reasoning street-by-street (\u201Cafter shuffle one it's 50/50, so after shuffle two it's still 50/50\u201D) gives the wrong answer, because the burn pile remembers. That failure of step-by-step odds is, structurally, quantum interference.",
-  cond: "The pocket card decides whether the first swap happens. In the worlds where it fired (black pocket), the two swaps complete the round trip — certain match. Where it didn't (red pocket), only the second swap runs — a coin flip. Blend: 3 in 4. Chaining the stage odds still says 50/50, and is still wrong — by a quarter now instead of a half. This is partial interference, the general case: real interferometers sit at angles like this, not only at the extremes.",
   peek: "Same two swaps — but your peek burned the card that remembered your deal, and a fresh card took its place. The second swap hands back a stranger. Looking destroyed the memory the game was going to use. That is what measurement does.",
+  cond: "The pocket card decides whether the first swap happens. Where it fired (black pocket), the two swaps complete the round trip — certain match. Where it didn't (red), only the second swap runs — a coin flip. Blend: 3 in 4. Step-by-step reasoning still says 50/50 and is still wrong — by a quarter now instead of a half. This is partial interference, the general case: real interferometers sit at angles like this, not only at the extremes.",
 };
 
 export default function CardTable() {
   const [seat, setSeat] = useState("player");
-  const [game, setGame] = useState("two");
+  const [game, setGame] = useState("one");
   const [hand, setHand] = useState(null);
   const [step, setStep] = useState(0);
-  const [guess, setGuess] = useState(null);      // your prediction before showdown
+  const [guess, setGuess] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(true);
   const [why, setWhy] = useState({});
   const [bankroll, setBankroll] = useState(100);
   const [bets, setBets] = useState([]);
-  const [sheet, setSheet] = useState("street");
   const [lastPlay, setLastPlay] = useState(null);
   const [handNo, setHandNo] = useState(0);
-  const [role, setRole] = useState("book"); // "book" = you post prices; "sharp" = the house does
   const rng = useRef(Math.random);
 
   const insp = seat === "inspector";
@@ -140,85 +136,61 @@ export default function CardTable() {
     : { bg: "radial-gradient(ellipse at 50% 30%, #256049 0%, #1E4D3B 55%, #123327 100%)", ink: "#F0EADA", panel: "rgba(0,0,0,.28)" };
 
   const actual = enumerate(game);
+  const truth = actual.num / actual.den;
+  const edgeExists = truth !== 0.5;               // house always prices 1/2
   const atShowdown = hand && step === hand.trace.length - 1;
   const beforeShowdown = hand && step === hand.trace.length - 2;
   const cur = hand ? hand.trace[step] : null;
+  const oddsStr = actual.den === 1 ? "certain" : `${actual.num} in ${actual.den}`;
 
+  function switchGame(k) { setGame(k); setHand(null); setGuess(null); setBets([]); setLastPlay(null); setHandNo(0); }
   function deal() { setHand(dealHand(game, rng.current)); setStep(0); setGuess(null); }
   function next() {
-    if (beforeShowdown && guess === null && game !== "one") return; // ask for the prediction first
+    if (beforeShowdown && guess === null && game !== "one") return;
     setStep((s) => Math.min(hand.trace.length - 1, s + 1));
   }
-  // You are the bookmaker: you post a price for a ticket that pays 1 chip on MATCH.
-  // A sharp takes whichever side of your price is profitable. Your expected loss per
-  // hand is |true odds - your price| — exactly the interference term.
-  function playBets(n) {
+
+  // The counter: the house lazily prices EVERY ticket at 1/2 ("each shuffle is 50/50").
+  // You buy when you know better. Your edge per ticket = truth - 1/2.
+  function buy(n) {
     let bk = bankroll; const hist = [...bets];
-    const price = sheet === "street" ? 0.5 : actual.num / actual.den;   // the posted price
-    const truth = actual.num / actual.den;
-    let matches = 0, traded = 0, delta = 0, last = null;
+    let matches = 0, delta = 0;
     for (let i = 0; i < n; i++) {
       const h = dealHand(game, rng.current);
-      const outcome = h.match ? 1 : 0;
-      let bookPnl = null;                                // null = price is right, no trade
-      if (truth > price) bookPnl = price - outcome;      // sharp buys the ticket
-      else if (truth < price) bookPnl = outcome - price; // sharp sells the ticket
-      const pnl = bookPnl === null ? null : (role === "book" ? bookPnl : -bookPnl);
-      if (pnl !== null) { bk += pnl; traded++; delta += pnl; }
-      if (h.match) matches++;
+      const pnl = (h.match ? 1 : 0) - 0.5;
+      bk += pnl; delta += pnl; if (h.match) matches++;
       hist.push({ pnl, match: h.match });
-      last = h;
     }
-    const pstr = price === 0.5 ? "½" : price === 0.75 ? "¾" : String(price);
-    const certain = actual.den === 1;
     const startNo = handNo + 1;
-    let msg;
-    if (n === 1) {
-      const res = `Hand #${startNo}: dealt ${cname(last.dealt)} → showdown ${cname(last.final)} (${last.match ? "match" : "no match"}${certain ? " — as it must be; this game never misses" : ""}).`;
-      if (!traded) {
-        msg = `${res} The posted price ${pstr} equals the true odds — no trade. ${role === "book" ? "Correct bookmaking is quiet." : "You can only beat someone who is reasoning wrongly."}`;
-      } else if (role === "book") {
-        msg = `${res} Your price: ${pstr}. The sharp bought your ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}.${certain ? " Same result every hand — that sameness IS the certainty you're mispricing." : ""}`;
-      } else {
-        msg = `${res} The house posted ${pstr}; you bought the ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}.${certain ? " You know this game never misses. The house doesn't. That knowledge is worth exactly ½ a chip, every hand." : ""}`;
-      }
-    } else {
-      const hands = `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched${certain && traded ? " (all of them — this game never misses)" : ""}.`;
-      if (!traded) {
-        msg = `${hands} No trades — the posted price equals the true odds. ${role === "book" ? "Correct bookmaking is quiet." : "A correctly priced house gives you nothing to take."}`;
-      } else if (role === "book") {
-        msg = `${hands} The sharp bought ${traded} tickets at ${pstr}; the tickets paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips.`;
-      } else {
-        msg = `${hands} You bought ${traded} tickets at ${pstr}; they paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips — collected from a house that reasons street-by-street.`;
-      }
-    }
-    setHandNo(handNo + n);
-    setLastPlay(msg);
+    const certain = actual.den === 1;
+    const msg = n === 1
+      ? `Hand #${startNo}: ${matches ? "match" : "no match"}${certain ? " — as it must be; this game never misses" : ""}. Ticket cost ½, paid ${matches}. You: ${delta > 0 ? "+" : ""}${delta}.`
+      : `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched${certain ? " (all — this game never misses)" : ""}. ${n} tickets at ½ paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips.`;
+    setHandNo(handNo + n); setLastPlay(msg);
     setBankroll(Math.round(bk * 2) / 2); setBets(hist.slice(-300));
   }
 
   return (
     <div style={{ minHeight: "100vh", background: world.bg, color: world.ink, transition: "background .4s,color .4s", fontFamily: "Iowan Old Style, Palatino Linotype, Georgia, serif" }}>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "26px 18px 48px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "26px 18px 48px" }}>
 
-        {/* ---------- header ---------- */}
         <h1 style={{ margin: 0, fontSize: 28 }}>The Card Table</h1>
         <div style={{ fontSize: 13.5, opacity: 0.8, marginTop: 4, lineHeight: 1.5 }}>
           A card game with no randomness in its rules — whose odds still behave like quantum mechanics.
         </div>
 
-        {/* ---------- house rules ---------- */}
+        {/* house rules */}
         <div style={{ background: world.panel, borderRadius: 12, padding: "14px 16px", marginTop: 16 }}>
-          <button onClick={() => setRulesOpen(!rulesOpen)} style={{ ...link(world.ink), fontWeight: 700, fontSize: 14 }}>
+          <button onClick={() => setRulesOpen(!rulesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: world.ink, padding: 0, fontWeight: 700, fontSize: 14 }}>
             House rules {rulesOpen ? "\u25BE" : "\u25B8"}
           </button>
           {rulesOpen && (
             <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
               <Rule n={1} why={why} setWhy={setWhy} ink={world.ink}
-                text={<><b>The deal.</b> You get one card, red or black, even odds. One <b>burn card</b> — also red or black — lies face down beside the deck. The question in every game: <i>at showdown, does your card match the one you were dealt?</i></>}
+                text={<><b>The deal.</b> You get one card, red or black, even odds. One <b>burn card</b> — also red or black — lies face down. The question in every game: <i>at showdown, does your card match the one you were dealt?</i></>}
                 whyText={<>This is the <b>only randomness in the entire game</b>, and it stands for one thing: you don't know the world's starting conditions. Every move after the deal is fixed by the rules — so whatever strangeness the odds show later, there are no dice in the machinery to blame it on. And the burn card is the whole point: the world contains more than your seat can see, and the rules are allowed to use that part too.</>} />
               <Rule n={2} why={why} setWhy={setWhy} ink={world.ink}
-                text={<><b>The shuffle.</b> There is exactly one shuffle move, and it is not random: <b>your card and the burn card trade places.</b> That's it. Every game below is just deals and swaps.</>}
+                text={<><b>The shuffle.</b> There is exactly one shuffle move, and it is not random: <b>your card and the burn card trade places.</b> Every game below is just deals and swaps.</>}
                 whyText={<>Two deliberate choices. <b>Deterministic:</b> same input, same result, every time — so probability can only ever come from what you can't see, never from the rules. <b>Reversible:</b> a swap undoes itself, so nothing is ever erased — information about your deal can <i>hide</i>, but the dynamics cannot destroy it. The swap is simply the smallest move that couples what you see to what you don't. The framework's real physics is built from exactly these two properties.</>} />
               <Rule n={3} why={why} setWhy={setWhy} ink={world.ink}
                 text={<><b>Looking costs.</b> If you peek at a card mid-game, that card is immediately burned and replaced with a fresh one. Looking is a physical act with consequences — not a free glance.</>}
@@ -227,150 +199,121 @@ export default function CardTable() {
           )}
         </div>
 
-        {/* ---------- seat toggle, explained ---------- */}
+        {/* seat toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
-          <button onClick={() => setSeat(insp ? "player" : "inspector")} style={{ ...btn(insp), borderRadius: 999, fontWeight: 700, background: insp ? "#23404A" : "#C9A227", color: insp ? "#F2F4F1" : "#1B1B1B", border: "none" }}>
+          <button onClick={() => setSeat(insp ? "player" : "inspector")} style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 999, cursor: "pointer", border: "none", background: insp ? "#23404A" : "#C9A227", color: insp ? "#F2F4F1" : "#1B1B1B" }}>
             {insp ? "\u21A9 sit back down (player view)" : "\u2191 stand up (inspector view)"}
           </button>
-          <span style={{ fontSize: 12.5, opacity: 0.75, flex: 1, minWidth: 220 }}>
-            {insp ? "You now see every card, face up, the whole time. Notice: no tricks anywhere." : "You see only what a player sees. The burn card stays hidden."}
+          <span style={{ fontSize: 12.5, opacity: 0.75, flex: 1, minWidth: 200 }}>
+            {insp ? "Every card face up, the whole time. Notice: no tricks anywhere." : "You see only what a player sees."}
           </span>
         </div>
 
-        {/* ---------- pick a game ---------- */}
-        <div style={{ marginTop: 18, fontWeight: 700, fontSize: 14 }}>Pick a game</div>
-        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-          {Object.entries(GAMES).map(([k, gm]) => (
-            <button key={k} onClick={() => { setGame(k); setHand(null); setGuess(null); setBets([]); setLastPlay(null); setHandNo(0); }}
-              style={{ flex: "1 1 175px", textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: world.panel, color: world.ink, border: game === k ? `2px solid ${insp ? "#23404A" : "#C9A227"}` : "1px solid rgba(128,128,128,.35)" }}>
-              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{gm.name}</div>
-              <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 2 }}>{gm.tag}</div>
+        {/* game progression */}
+        <div style={{ display: "flex", gap: 6, marginTop: 16, flexWrap: "wrap" }}>
+          {ORDER.map((k, i) => (
+            <button key={k} onClick={() => switchGame(k)}
+              style={{ flex: "1 1 150px", textAlign: "left", padding: "9px 11px", borderRadius: 10, cursor: "pointer", background: world.panel, color: world.ink, border: game === k ? `2px solid ${insp ? "#23404A" : "#C9A227"}` : "1px solid rgba(128,128,128,.3)", opacity: game === k ? 1 : 0.75 }}>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>Game {i + 1}</div>
+              <div style={{ fontWeight: 700, fontSize: 13 }}>{GAMES[k].name}</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>{GAMES[k].sub}</div>
             </button>
           ))}
         </div>
 
-        {/* ---------- the table ---------- */}
-        <div style={{ background: world.panel, borderRadius: 14, padding: "20px 16px", marginTop: 14 }}>
+        {/* the table */}
+        <div style={{ background: world.panel, borderRadius: 14, padding: "20px 16px", marginTop: 12 }}>
           {!hand ? (
-            <div style={{ textAlign: "center", padding: "18px 0" }}>
+            <div style={{ textAlign: "center", padding: "16px 0" }}>
               <button onClick={deal} style={{ ...btn(insp), fontSize: 15, padding: "10px 22px" }}>Deal</button>
             </div>
           ) : (
             <div>
-              <div style={{ display: "flex", justifyContent: "center", gap: game === "cond" ? 34 : 54 }}>
+              <div style={{ display: "flex", justifyContent: "center", gap: game === "cond" ? 30 : 50 }}>
                 <PlayCard bit={cur.v} faceUp={insp || cur.label === "deal" || cur.label === "showdown" || cur.label === "peek"} label="YOUR CARD" />
                 <PlayCard bit={cur.h} faceUp={insp} label="BURN CARD" />
                 {game === "cond" && <PlayCard bit={cur.p} faceUp={insp} label="DEALER'S POCKET" />}
               </div>
-
-              {/* narration — the sentence that explains what just happened */}
               <div style={{ margin: "16px auto 0", maxWidth: 520, textAlign: "center", fontSize: 14.5, lineHeight: 1.55, minHeight: 44 }}>
                 {narrate(hand, cur, game, seat)}
               </div>
-
-              {/* prediction prompt, right before showdown */}
               {beforeShowdown && guess === null && game !== "one" && (
                 <div style={{ textAlign: "center", marginTop: 14 }}>
-                  <div style={{ fontSize: 13.5, marginBottom: 8 }}>Before you look — what are the odds your card matches your deal?</div>
+                  <div style={{ fontSize: 13.5, marginBottom: 8 }}>Before you look — the odds your card matches your deal?</div>
                   <button onClick={() => setGuess("half")} style={btn(insp)}>50 / 50</button>{" "}
-                  <button onClick={() => setGuess("sure")} style={btn(insp)}>It's certain</button>{" "}
-                  {game === "cond" && <button onClick={() => setGuess("partial")} style={btn(insp)}>Somewhere in between</button>}
+                  <button onClick={() => setGuess("sure")} style={btn(insp)}>Certain</button>{" "}
+                  {game === "cond" && <button onClick={() => setGuess("partial")} style={btn(insp)}>In between</button>}
                 </div>
               )}
-
-              {/* result + why */}
               {atShowdown && (
                 <div style={{ margin: "14px auto 0", maxWidth: 560, fontSize: 13.5, lineHeight: 1.6, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 10, padding: "12px 14px" }}>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                    True odds for this game: {actual.num}/{actual.den} {actual.den === 1 ? "— certain, every single time" : actual.num === 3 ? "— a real gamble, tilted" : ""}
+                    True odds: {oddsStr}
                     {guess && (() => { const correct = actual.den === 1 ? "sure" : actual.num === 1 ? "half" : "partial";
                       const names = { sure: "certain", half: "50/50", partial: "in between" };
-                      return ` — you guessed ${names[guess]}${guess === correct ? " ✓" : ""}`; })()}
+                      return ` — you guessed ${names[guess]}${guess === correct ? " \u2713" : ""}`; })()}
                   </div>
                   {EXPLAIN[game]}
                 </div>
               )}
-
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
                 <button onClick={() => setStep(Math.max(0, step - 1))} style={btn(insp)} disabled={step === 0}>&larr; back</button>
                 <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown || (beforeShowdown && guess === null && game !== "one")}>
-                  {beforeShowdown ? "showdown \u2192" : "next step \u2192"}
+                  {beforeShowdown ? "showdown \u2192" : "next \u2192"}
                 </button>
                 <button onClick={deal} style={btn(insp)}>redeal</button>
               </div>
-              {beforeShowdown && guess === null && game !== "one" && (
-                <div style={{ textAlign: "center", fontSize: 11.5, opacity: 0.65, marginTop: 6 }}>make your call first</div>
-              )}
             </div>
           )}
         </div>
 
-        {/* ---------- the bet ---------- */}
-        <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Round two: pick a side of the counter</div>
+        {/* the counter — one fixed framing, no modes */}
+        <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 12 }}>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>The counter</div>
           <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6, margin: "6px 0 10px" }}>
-            A ticket pays 1 chip if the card matches. Someone posts a price for it; the other side
-            trades against that price whenever it's wrong, and declines when it's right. The price is set{" "}
-            <b>street-by-street</b> (&ldquo;each shuffle is 50/50, so the ticket is worth &frac12; chip&rdquo;)
-            or <b>whole-hand</b> (the exact odds of the full game). Money flows from whoever reasons
-            street-by-street to whoever reasons whole-hand — the interference term is not a fine,
-            it's a <b>transfer</b>.{" "}
-            {actual.den === 1
-              ? <b>On this game the two prices disagree, so one side gets picked clean. Choose your seat.</b>
-              : actual.num === 3
-              ? <b>On this game the prices disagree by a quarter — and single hands can go either way. An edge, not a lock: this is what a real casino advantage feels like.</b>
-              : "On this game both methods give the same, correct price — nobody has an edge on anybody."}
-          </div>
-          <div style={{ fontSize: 13, marginBottom: 8 }}>
-            You are{" "}
-            <button onClick={() => { setRole("book"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(role === "book", insp)}>the bookmaker (you post prices)</button>{" "}
-            <button onClick={() => { setRole("sharp"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(role === "sharp", insp)}>the sharp (the house posts them)</button>
-          </div>
-          <div style={{ fontSize: 13, marginBottom: 10 }}>
-            {role === "book" ? "You price" : "The house prices"}{" "}
-            <button onClick={() => { setSheet("street"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "street", insp)}>street-by-street (price ½)</button>{" "}
-            <button onClick={() => { setSheet("whole"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "whole", insp)}>whole-hand (price {actual.den === 1 ? "1" : actual.num === 3 ? "¾" : "½"})</button>
+            The house sells a ticket that pays 1 chip if your card matches — and it prices every game
+            the lazy way: &ldquo;each shuffle is 50/50, so a ticket costs <b>½</b>.&rdquo; You know the true odds
+            of this game: <b>{oddsStr}</b>.{" "}
+            {edgeExists
+              ? <b>The house is wrong here. Buy.</b>
+              : <>Here the lazy price happens to be right — there is nothing to buy. (And if <i>you</i> were the one
+                 selling tickets at the lazy price, this money would flow the other way. Mispricing is a transfer, not a fine.)</>}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 26, fontWeight: 700 }}>
               {bankroll} <span style={{ fontSize: 12, fontWeight: 400, opacity: 0.7 }}>chips</span>
             </div>
-            <button onClick={() => playBets(1)} style={btn(insp)}>Play 1 hand</button>
-            <button onClick={() => playBets(100)} style={btn(insp)}>Play 100</button>
+            <button onClick={() => buy(1)} style={btn(insp)} disabled={!edgeExists}>Buy a ticket (½)</button>
+            <button onClick={() => buy(100)} style={btn(insp)} disabled={!edgeExists}>Buy 100</button>
             <button onClick={() => { setBankroll(100); setBets([]); setLastPlay(null); setHandNo(0); }} style={btn(insp)}>Reset</button>
           </div>
           {lastPlay && (
             <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.55, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 8, padding: "9px 12px" }}>
               {lastPlay}
-              {bankroll <= 0 && <b> You're cleaned out — half a chip a hand, every hand. The other side thanks you and extends credit.</b>}
-              {bankroll >= 200 && <b> You've doubled your stack off a house that won't stop reasoning street-by-street. This is what understanding the game is worth.</b>}
+              {bankroll >= 200 && <b> You've doubled your stack off a house that won't stop reasoning step-by-step. This is what understanding the game is worth.</b>}
             </div>
           )}
           {bets.length > 0 && (
             <>
               <div style={{ marginTop: 10, height: 14, display: "flex", gap: 1 }}>
                 {bets.slice(-80).map((b, i) => (
-                  <div key={i} title={b.pnl === null ? "no trade" : (b.pnl > 0 ? "you won" : "sharp won")}
-                    style={{ flex: 1, borderRadius: 1, background: b.pnl === null ? "rgba(128,128,128,.45)" : b.pnl > 0 ? (insp ? "#1c6e46" : "#D8C878") : "#c05b52" }} />
+                  <div key={i} title={b.pnl > 0 ? "won" : "lost"} style={{ flex: 1, borderRadius: 1, background: b.pnl > 0 ? (insp ? "#1c6e46" : "#D8C878") : "#c05b52" }} />
                 ))}
               </div>
               <div style={{ marginTop: 8, fontSize: 12.5, fontFamily: "ui-monospace, Menlo, monospace", opacity: 0.9 }}>
                 {(() => {
-                  const traded = bets.filter((b) => b.pnl !== null);
-                  if (!traded.length) return "The sharp hasn't taken a single ticket. Your prices are right.";
-                  const rate = traded.reduce((s, b) => s + b.pnl, 0) / bets.length;
-                  return `Rate: ${rate >= 0 ? "+" : ""}${rate.toFixed(2)} chips/hand over ${bets.length} hands` +
-                    (rate < 0 ? " — that number IS the interference term, collected in cash." : "");
+                  const rate = bets.reduce((s, b) => s + b.pnl, 0) / bets.length;
+                  return `Rate: ${rate >= 0 ? "+" : ""}${rate.toFixed(2)} chips/hand over ${bets.length} hands — the interference term, collected in cash.`;
                 })()}
               </div>
             </>
           )}
         </div>
 
-        {/* ---------- audit + boundary ---------- */}
+        {/* audit + boundary */}
         <div style={{ marginTop: 16, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace" }}>
-            engine self-test: {ALL_PASS ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${GAMES[t.p].name.split(":")[0]} ${t.got}`).join(" \u00B7 ")}) — the entire game engine is ~50 lines at the top of this file. Read it: there is no trick to find.
+            engine self-test: {ALL_PASS ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${GAMES[t.p].name} ${t.got}`).join(" \u00B7 ")}) — the entire engine is ~60 lines at the top of this file. Read it: there is no trick to find.
           </div>
           <div style={{ marginTop: 8 }}>
             Honest boundary: this is a local classical mechanism. It reproduces interference, indivisibility,
@@ -404,7 +347,7 @@ function Rule({ n, text, whyText, why, setWhy, ink }) {
 function PlayCard({ bit, faceUp, label }) {
   return (
     <div style={{ textAlign: "center" }}>
-      <div style={{ width: 74, height: 104, borderRadius: 8, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,.45)", boxShadow: "0 3px 10px rgba(0,0,0,.35)", background: faceUp ? "#F6F1E3" : "repeating-linear-gradient(135deg,#27506b 0 7px,#1d3d53 7px 14px)" }}>
+      <div style={{ width: 72, height: 102, borderRadius: 8, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(0,0,0,.45)", boxShadow: "0 3px 10px rgba(0,0,0,.35)", background: faceUp ? "#F6F1E3" : "repeating-linear-gradient(135deg,#27506b 0 7px,#1d3d53 7px 14px)" }}>
         {faceUp && <span style={{ color: ccol(bit), fontSize: 32, fontWeight: 700 }}>{bit === 0 ? "\u2665" : "\u2660"}</span>}
       </div>
       <div style={{ fontSize: 10.5, letterSpacing: ".12em", marginTop: 6, opacity: 0.75 }}>{label}</div>
@@ -412,6 +355,4 @@ function PlayCard({ bit, faceUp, label }) {
   );
 }
 
-const btn = (insp) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 600, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid rgba(128,128,128,.5)", background: insp ? "#fff" : "rgba(255,255,255,.12)", color: "inherit" });
-const pill = (on, insp) => ({ ...btn(insp), borderRadius: 999, padding: "4px 12px", background: on ? (insp ? "#23404A" : "#C9A227") : "transparent", color: on ? (insp ? "#F2F4F1" : "#1B1B1B") : "inherit" });
-const link = (ink) => ({ background: "none", border: "none", cursor: "pointer", color: ink, padding: 0 });
+const btn = (insp) => ({ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 600, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: "1px solid rgba(128,128,128,.5)", background: insp ? "#fff" : "rgba(255,255,255,.12)", color: "inherit", opacity: 1 });
