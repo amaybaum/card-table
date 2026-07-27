@@ -15,21 +15,19 @@ seat at any point: every card face up, every step ledgered — there is no trick
 The honest boundary is stated on the page: no card game violates a Bell inequality; that
 part belongs to the framework, not the toy.
 
-## This repository
+## How this repo deploys
 
-- `index-standalone.html` — the entire app in one file (CDN React, in-browser Babel).
-  For the live site above, it is uploaded renamed to `index.html`.
-- `src/` + `vite.config.js` + `package.json` — the durable Vite version of the same
-  component. `npm install && npm run dev` to develop; pushes to `main` deploy via
-  `.github/workflows/deploy.yml` if Pages is set to "GitHub Actions".
-- `tools/build_standalone.py` — the ONLY supported way to regenerate the standalone
-  file from `src/App.jsx`. (A hand regeneration once injected literal `\n` into the
-  script body and blanked the page; the script asserts against that.)
+Pages is served by GitHub Actions: every push to `main` builds the Vite app and deploys
+it (`.github/workflows/deploy.yml`). **To update the live site: edit `src/App.jsx`,
+commit, push. Live in about two minutes.** Nothing to build or rename by hand.
 
-## Updating the live site
+## Layout
 
-Edit `src/App.jsx` → `python3 tools/build_standalone.py` → upload the result to the
-`card-table` repo renamed `index.html` → commit. Pages refreshes in ~1 minute.
-
-The game engine is the ~50 framework-free lines at the top of `src/App.jsx`, with a
-self-test at load asserting the odds table (1/2, 1, 1/2). Read it.
+- `src/App.jsx` — the entire app. The game engine is the ~50 framework-free lines at
+  the top, with a self-test at load asserting the odds table (1/2, 1, 1/2). Read it:
+  there is no trick to find.
+- `src/main.jsx`, `index.html`, `vite.config.js`, `package.json` — standard Vite
+  scaffolding. `npm install && npm run dev` for local development with live reload.
+- `tools/build_standalone.py` — optional: generates a single self-contained HTML file
+  of the app (CDN React, in-browser Babel) for sharing by email or hosting anywhere
+  without a build step. Not used by the deployed site.
