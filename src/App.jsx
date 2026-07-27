@@ -120,7 +120,6 @@ export default function CardTable() {
   const [game, setGame] = useState("two");
   const [hand, setHand] = useState(null);
   const [step, setStep] = useState(0);
-  const [guess, setGuess] = useState(null);
   const [rulesOpen, setRulesOpen] = useState(true);
   const [why, setWhy] = useState({});
   const [bankroll, setBankroll] = useState(100);
@@ -141,14 +140,13 @@ export default function CardTable() {
   const cur = hand ? hand.trace[step] : null;
   const oddsStr = actual.den === 1 ? "certain" : `${actual.num} in ${actual.den}`;
 
-  function switchGame(k) { setGame(k); setHand(null); setGuess(null); setBets([]); setLastPlay(null); setHandNo(0); }
+  function switchGame(k) { setGame(k); setHand(null); setBets([]); setLastPlay(null); setHandNo(0); }
   function deal() {
     const refund = hand && !hand.settled ? 0.5 : 0;   // abandoning an unfinished hand voids its ticket
     setBankroll((x) => Math.round((x - 0.5 + refund) * 2) / 2);
-    setHand(dealHand(game, rng.current)); setStep(0); setGuess(null);
+    setHand(dealHand(game, rng.current)); setStep(0);
   }
   function next() {
-    if (beforeShowdown && guess === null) return;
     const target = Math.min(hand.trace.length - 1, step + 1);
     if (target === hand.trace.length - 1 && !hand.settled) {
       const pnl = (hand.match ? 1 : 0) - 0.5;
@@ -167,7 +165,7 @@ export default function CardTable() {
     const t = [d, s1, { label: "peek", v: s1.v, h: freshH, peeked: seen },
                { label: "shuffle2", v: v2, h: h2 }, { label: "showdown", v: v2, h: h2 }];
     setHand({ dealt: d.v, final: v2, match: v2 === d.v, peeked: true, trace: t });
-    setStep(2); setGuess(null);
+    setStep(2);
   }
 
   // Auto-play: n blind hands, each carrying the standard 1/2 ticket, settled instantly.
@@ -257,21 +255,11 @@ export default function CardTable() {
               <div style={{ margin: "16px auto 0", maxWidth: 520, textAlign: "center", fontSize: 14.5, lineHeight: 1.55, minHeight: 44 }}>
                 {narrate(hand, cur, game, seat)}
               </div>
-              {beforeShowdown && guess === null && (
-                <div style={{ textAlign: "center", marginTop: 14 }}>
-                  <div style={{ fontSize: 13.5, marginBottom: 8 }}>Before you look — the odds your card matches your deal?</div>
-                  <button onClick={() => setGuess("half")} style={btn(insp)}>50 / 50</button>{" "}
-                  <button onClick={() => setGuess("sure")} style={btn(insp)}>Certain</button>{" "}
-                  {game === "cond" && <button onClick={() => setGuess("partial")} style={btn(insp)}>In between</button>}
-                </div>
-              )}
               {atShowdown && (
                 <div style={{ margin: "14px auto 0", maxWidth: 560, fontSize: 13.5, lineHeight: 1.6, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 10, padding: "12px 14px" }}>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>
                     True odds: {hand.peeked ? "1 in 2 — your peek reset them" : oddsStr}
-                    {guess && (() => { const correct = hand.peeked ? "half" : actual.den === 1 ? "sure" : actual.num === 1 ? "half" : "partial";
-                      const names = { sure: "certain", half: "50/50", partial: "in between" };
-                      return ` — you guessed ${names[guess]}${guess === correct ? " \u2713" : ""}`; })()}
+                    
                   </div>
                   <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12.5, marginBottom: 6 }}>
                     Your ticket: paid ½ at the deal → collected {hand.match ? 1 : 0} ({hand.match ? "+½" : "−½"})
@@ -291,7 +279,7 @@ export default function CardTable() {
               )}
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
                 <button onClick={() => setStep(Math.max(0, step - 1))} style={btn(insp)} disabled={step === 0}>&larr; back</button>
-                <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown || (beforeShowdown && guess === null)}>
+                <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown}>
                   {beforeShowdown ? "showdown \u2192" : "next \u2192"}
                 </button>
                 <button onClick={deal} style={btn(insp)}>redeal (new ticket: ½)</button>
