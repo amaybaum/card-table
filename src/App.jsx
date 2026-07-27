@@ -10,6 +10,16 @@ const swap = ([v, h]) => [h, v];
 
 function enumerate(game) {
   const cases = [];
+  if (game === "cond") {
+    for (const v0 of [0, 1]) for (const h0 of [0, 1]) for (const p0 of [0, 1]) {
+      let [v, h] = p0 === 1 ? swap([v0, h0]) : [v0, h0];  // conditional shuffle
+      [v, h] = swap([v, h]);                               // full shuffle
+      cases.push(v === v0);
+    }
+    const n = cases.filter(Boolean).length, d = cases.length;
+    const g0 = (a, b) => (b ? g0(b, a % b) : a || 1); const k0 = g0(n, d);
+    return { num: n / k0 || 0, den: n === 0 ? 1 : d / k0 };
+  }
   for (const v0 of [0, 1]) for (const h0 of [0, 1]) {
     if (game === "peek") {
       for (const h2 of [0, 1]) {
@@ -30,6 +40,16 @@ function enumerate(game) {
 
 function dealHand(game, rng) {
   const v0 = rng() < 0.5 ? 0 : 1, h0 = rng() < 0.5 ? 0 : 1;
+  if (game === "cond") {
+    const p0 = rng() < 0.5 ? 0 : 1;
+    const t = [{ label: "deal", v: v0, h: h0, p: p0 }];
+    let [v, h] = p0 === 1 ? swap([v0, h0]) : [v0, h0];
+    t.push({ label: "condshuffle", v, h, p: p0, fired: p0 === 1 });
+    [v, h] = swap([v, h]);
+    t.push({ label: "shuffle2", v, h, p: p0 });
+    t.push({ label: "showdown", v, h, p: p0 });
+    return { dealt: v0, final: v, match: v === v0, trace: t };
+  }
   const t = [{ label: "deal", v: v0, h: h0 }];
   let [v, h] = swap([v0, h0]);
   t.push({ label: "shuffle", v, h });
@@ -39,7 +59,7 @@ function dealHand(game, rng) {
   return { dealt: v0, final: v, match: v === v0, trace: t };
 }
 
-const TABLE = { one: [1, 2], two: [1, 1], peek: [1, 2] };
+const TABLE = { one: [1, 2], two: [1, 1], peek: [1, 2], cond: [3, 4] };
 const SELF_TEST = Object.entries(TABLE).map(([p, [n, d]]) => {
   const r = enumerate(p); return { p, got: `${r.num}/${r.den}`, pass: r.num === n && r.den === d };
 });
@@ -53,6 +73,7 @@ const GAMES = {
   one: { name: "Warm-up: one shuffle", tag: "get a feel for the swap" },
   two: { name: "The surprise: two shuffles", tag: "the whole point of this app" },
   peek: { name: "The peek: two shuffles, but you look", tag: "what looking costs" },
+  cond: { name: "The real table: a conditional shuffle", tag: "partial interference — and finally, a real gamble" },
 };
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
@@ -74,6 +95,12 @@ function narrate(step, t, game, seat) {
       return insp
         ? `You peek: ${cname(t.peeked)}. House rule: a seen card is burned and replaced with a fresh one (${cname(t.h)} landed in the pile). The card that remembered your deal is gone.`
         : `You peek at your card: ${cname(t.peeked)}. House rule: a seen card is burned and replaced with a fresh, unrelated one. Looking is not free.`;
+    case "condshuffle":
+      return insp
+        ? (t.fired
+            ? `The dealer's pocket card is BLACK — the conditional shuffle FIRES: your ${cname(t.h)} moved into the burn pile.`
+            : `The dealer's pocket card is RED — the conditional shuffle does NOT fire. Nothing moves.`)
+        : `The dealer checks a pocket card you cannot see. If it's black, your card and the burn card trade places; if red, nothing moves. Something may or may not have just happened.`;
     case "shuffle2":
       return insp
         ? `SWAP again. The burn pile hands back whatever it was holding — which is ${game === "two" ? "your original card, coming home" : "the fresh replacement, which knows nothing about your deal"}.`
@@ -87,6 +114,7 @@ function narrate(step, t, game, seat) {
 const EXPLAIN = {
   one: "One swap hands you the burn card, and the burn card was 50/50. One shuffle = a coin flip. Nothing strange yet.",
   two: "Each swap alone is a coin flip — yet two of them are a guarantee. The first swap hid your card in the burn pile; the second handed it back. Reasoning street-by-street (\u201Cafter shuffle one it's 50/50, so after shuffle two it's still 50/50\u201D) gives the wrong answer, because the burn pile remembers. That failure of step-by-step odds is, structurally, quantum interference.",
+  cond: "The pocket card decides whether the first swap happens. In the worlds where it fired (black pocket), the two swaps complete the round trip — certain match. Where it didn't (red pocket), only the second swap runs — a coin flip. Blend: 3 in 4. Chaining the stage odds still says 50/50, and is still wrong — by a quarter now instead of a half. This is partial interference, the general case: real interferometers sit at angles like this, not only at the extremes.",
   peek: "Same two swaps — but your peek burned the card that remembered your deal, and a fresh card took its place. The second swap hands back a stranger. Looking destroyed the memory the game was going to use. That is what measurement does.",
 };
 
@@ -141,7 +169,7 @@ export default function CardTable() {
       hist.push({ pnl, match: h.match });
       last = h;
     }
-    const pstr = price === 0.5 ? "½" : String(price);
+    const pstr = price === 0.5 ? "½" : price === 0.75 ? "¾" : String(price);
     const certain = actual.den === 1;
     const startNo = handNo + 1;
     let msg;
@@ -229,9 +257,10 @@ export default function CardTable() {
             </div>
           ) : (
             <div>
-              <div style={{ display: "flex", justifyContent: "center", gap: 54 }}>
+              <div style={{ display: "flex", justifyContent: "center", gap: game === "cond" ? 34 : 54 }}>
                 <PlayCard bit={cur.v} faceUp={insp || cur.label === "deal" || cur.label === "showdown" || cur.label === "peek"} label="YOUR CARD" />
                 <PlayCard bit={cur.h} faceUp={insp} label="BURN CARD" />
+                {game === "cond" && <PlayCard bit={cur.p} faceUp={insp} label="DEALER'S POCKET" />}
               </div>
 
               {/* narration — the sentence that explains what just happened */}
@@ -244,7 +273,8 @@ export default function CardTable() {
                 <div style={{ textAlign: "center", marginTop: 14 }}>
                   <div style={{ fontSize: 13.5, marginBottom: 8 }}>Before you look — what are the odds your card matches your deal?</div>
                   <button onClick={() => setGuess("half")} style={btn(insp)}>50 / 50</button>{" "}
-                  <button onClick={() => setGuess("sure")} style={btn(insp)}>It's certain</button>
+                  <button onClick={() => setGuess("sure")} style={btn(insp)}>It's certain</button>{" "}
+                  {game === "cond" && <button onClick={() => setGuess("partial")} style={btn(insp)}>Somewhere in between</button>}
                 </div>
               )}
 
@@ -252,8 +282,10 @@ export default function CardTable() {
               {atShowdown && (
                 <div style={{ margin: "14px auto 0", maxWidth: 560, fontSize: 13.5, lineHeight: 1.6, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 10, padding: "12px 14px" }}>
                   <div style={{ fontWeight: 700, marginBottom: 4 }}>
-                    True odds for this game: {actual.num}/{actual.den === 1 ? "1 — certain, every single time" : actual.den}
-                    {guess && ` — you guessed ${guess === "sure" ? "certain" : "50/50"}${(guess === "sure") === (actual.den === 1) ? " \u2713" : ""}`}
+                    True odds for this game: {actual.num}/{actual.den} {actual.den === 1 ? "— certain, every single time" : actual.num === 3 ? "— a real gamble, tilted" : ""}
+                    {guess && (() => { const correct = actual.den === 1 ? "sure" : actual.num === 1 ? "half" : "partial";
+                      const names = { sure: "certain", half: "50/50", partial: "in between" };
+                      return ` — you guessed ${names[guess]}${guess === correct ? " ✓" : ""}`; })()}
                   </div>
                   {EXPLAIN[game]}
                 </div>
@@ -285,6 +317,8 @@ export default function CardTable() {
             it's a <b>transfer</b>.{" "}
             {actual.den === 1
               ? <b>On this game the two prices disagree, so one side gets picked clean. Choose your seat.</b>
+              : actual.num === 3
+              ? <b>On this game the prices disagree by a quarter — and single hands can go either way. An edge, not a lock: this is what a real casino advantage feels like.</b>
               : "On this game both methods give the same, correct price — nobody has an edge on anybody."}
           </div>
           <div style={{ fontSize: 13, marginBottom: 8 }}>
@@ -295,7 +329,7 @@ export default function CardTable() {
           <div style={{ fontSize: 13, marginBottom: 10 }}>
             {role === "book" ? "You price" : "The house prices"}{" "}
             <button onClick={() => { setSheet("street"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "street", insp)}>street-by-street (price ½)</button>{" "}
-            <button onClick={() => { setSheet("whole"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "whole", insp)}>whole-hand (price {actual.den === 1 ? "1" : "½"})</button>
+            <button onClick={() => { setSheet("whole"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "whole", insp)}>whole-hand (price {actual.den === 1 ? "1" : actual.num === 3 ? "¾" : "½"})</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 26, fontWeight: 700 }}>
