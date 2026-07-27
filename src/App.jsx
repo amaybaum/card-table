@@ -103,6 +103,7 @@ export default function CardTable() {
   const [sheet, setSheet] = useState("street");
   const [lastPlay, setLastPlay] = useState(null);
   const [handNo, setHandNo] = useState(0);
+  const [role, setRole] = useState("book"); // "book" = you post prices; "sharp" = the house does
   const rng = useRef(Math.random);
 
   const insp = seat === "inspector";
@@ -125,15 +126,16 @@ export default function CardTable() {
   // hand is |true odds - your price| — exactly the interference term.
   function playBets(n) {
     let bk = bankroll; const hist = [...bets];
-    const price = sheet === "street" ? 0.5 : actual.num / actual.den;
+    const price = sheet === "street" ? 0.5 : actual.num / actual.den;   // the posted price
     const truth = actual.num / actual.den;
     let matches = 0, traded = 0, delta = 0, last = null;
     for (let i = 0; i < n; i++) {
       const h = dealHand(game, rng.current);
       const outcome = h.match ? 1 : 0;
-      let pnl = null;                            // null = priced right, sharp declines
-      if (truth > price) pnl = price - outcome;  // sharp buys your ticket
-      else if (truth < price) pnl = outcome - price; // sharp sells you the ticket
+      let bookPnl = null;                                // null = price is right, no trade
+      if (truth > price) bookPnl = price - outcome;      // sharp buys the ticket
+      else if (truth < price) bookPnl = outcome - price; // sharp sells the ticket
+      const pnl = bookPnl === null ? null : (role === "book" ? bookPnl : -bookPnl);
       if (pnl !== null) { bk += pnl; traded++; delta += pnl; }
       if (h.match) matches++;
       hist.push({ pnl, match: h.match });
@@ -145,13 +147,22 @@ export default function CardTable() {
     let msg;
     if (n === 1) {
       const res = `Hand #${startNo}: dealt ${cname(last.dealt)} → showdown ${cname(last.final)} (${last.match ? "match" : "no match"}${certain ? " — as it must be; this game never misses" : ""}).`;
-      msg = traded
-        ? `${res} Your price: ${pstr}. The sharp bought your ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}. ${certain ? "Same result every hand — that sameness IS the certainty you're mispricing." : ""}`
-        : `${res} Your price ${pstr} equals the true odds — the sharp declined to trade. No money moved.`;
+      if (!traded) {
+        msg = `${res} The posted price ${pstr} equals the true odds — no trade. ${role === "book" ? "Correct bookmaking is quiet." : "You can only beat someone who is reasoning wrongly."}`;
+      } else if (role === "book") {
+        msg = `${res} Your price: ${pstr}. The sharp bought your ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}.${certain ? " Same result every hand — that sameness IS the certainty you're mispricing." : ""}`;
+      } else {
+        msg = `${res} The house posted ${pstr}; you bought the ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}.${certain ? " You know this game never misses. The house doesn't. That knowledge is worth exactly ½ a chip, every hand." : ""}`;
+      }
     } else {
-      msg = traded
-        ? `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched${certain ? " (all of them — this game never misses)" : ""}. The sharp bought ${traded} tickets at ${pstr}; the tickets paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips.`
-        : `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched — and the sharp never traded once. Your price equals the true odds; correct bookmaking is quiet.`;
+      const hands = `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched${certain && traded ? " (all of them — this game never misses)" : ""}.`;
+      if (!traded) {
+        msg = `${hands} No trades — the posted price equals the true odds. ${role === "book" ? "Correct bookmaking is quiet." : "A correctly priced house gives you nothing to take."}`;
+      } else if (role === "book") {
+        msg = `${hands} The sharp bought ${traded} tickets at ${pstr}; the tickets paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips.`;
+      } else {
+        msg = `${hands} You bought ${traded} tickets at ${pstr}; they paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips — collected from a house that reasons street-by-street.`;
+      }
     }
     setHandNo(handNo + n);
     setLastPlay(msg);
@@ -264,20 +275,25 @@ export default function CardTable() {
 
         {/* ---------- the bet ---------- */}
         <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
-          <div style={{ fontWeight: 700, fontSize: 14 }}>Round two: you're the bookmaker</div>
+          <div style={{ fontWeight: 700, fontSize: 14 }}>Round two: pick a side of the counter</div>
           <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6, margin: "6px 0 10px" }}>
-            Each hand, you must <b>post a price</b> for a ticket that pays 1 chip if the card matches.
-            A sharp at your table takes whichever side of your price makes money — and declines if your
-            price is exactly right. Price your tickets{" "}
+            A ticket pays 1 chip if the card matches. Someone posts a price for it; the other side
+            trades against that price whenever it's wrong, and declines when it's right. The price is set{" "}
             <b>street-by-street</b> (&ldquo;each shuffle is 50/50, so the ticket is worth &frac12; chip&rdquo;)
-            or <b>whole-hand</b> (the exact odds of the full game).
-            On <i>{GAMES[game].name.toLowerCase()}</i>{" "}
+            or <b>whole-hand</b> (the exact odds of the full game). Money flows from whoever reasons
+            street-by-street to whoever reasons whole-hand — the interference term is not a fine,
+            it's a <b>transfer</b>.{" "}
             {actual.den === 1
-              ? <b>the two prices disagree — one bookmaker is about to get picked clean. Find out which.</b>
-              : "both methods post the same, correct price — the sharp finds nothing to take."}
+              ? <b>On this game the two prices disagree, so one side gets picked clean. Choose your seat.</b>
+              : "On this game both methods give the same, correct price — nobody has an edge on anybody."}
+          </div>
+          <div style={{ fontSize: 13, marginBottom: 8 }}>
+            You are{" "}
+            <button onClick={() => { setRole("book"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(role === "book", insp)}>the bookmaker (you post prices)</button>{" "}
+            <button onClick={() => { setRole("sharp"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(role === "sharp", insp)}>the sharp (the house posts them)</button>
           </div>
           <div style={{ fontSize: 13, marginBottom: 10 }}>
-            Price{" "}
+            {role === "book" ? "You price" : "The house prices"}{" "}
             <button onClick={() => { setSheet("street"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "street", insp)}>street-by-street (price ½)</button>{" "}
             <button onClick={() => { setSheet("whole"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "whole", insp)}>whole-hand (price {actual.den === 1 ? "1" : "½"})</button>
           </div>
@@ -292,7 +308,8 @@ export default function CardTable() {
           {lastPlay && (
             <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.55, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 8, padding: "9px 12px" }}>
               {lastPlay}
-              {bankroll <= 0 && <b> You're cleaned out — half a chip a hand, every hand. The sharp thanks you and extends credit.</b>}
+              {bankroll <= 0 && <b> You're cleaned out — half a chip a hand, every hand. The other side thanks you and extends credit.</b>}
+              {bankroll >= 200 && <b> You've doubled your stack off a house that won't stop reasoning street-by-street. This is what understanding the game is worth.</b>}
             </div>
           )}
           {bets.length > 0 && (
