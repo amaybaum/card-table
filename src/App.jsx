@@ -117,7 +117,7 @@ const EXPLAIN = {
 
 export default function CardTable() {
   const [seat, setSeat] = useState("player");
-  const [game, setGame] = useState("one");
+  const [game, setGame] = useState("two");
   const [hand, setHand] = useState(null);
   const [step, setStep] = useState(0);
   const [guess, setGuess] = useState(null);
