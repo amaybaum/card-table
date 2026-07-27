@@ -102,6 +102,7 @@ export default function CardTable() {
   const [bets, setBets] = useState([]);
   const [sheet, setSheet] = useState("street");
   const [lastPlay, setLastPlay] = useState(null);
+  const [handNo, setHandNo] = useState(0);
   const rng = useRef(Math.random);
 
   const insp = seat === "inspector";
@@ -139,17 +140,20 @@ export default function CardTable() {
       last = h;
     }
     const pstr = price === 0.5 ? "½" : String(price);
+    const certain = actual.den === 1;
+    const startNo = handNo + 1;
     let msg;
     if (n === 1) {
-      const res = `Dealt ${cname(last.dealt)} → showdown ${cname(last.final)} (${last.match ? "match" : "no match"}).`;
+      const res = `Hand #${startNo}: dealt ${cname(last.dealt)} → showdown ${cname(last.final)} (${last.match ? "match" : "no match"}${certain ? " — as it must be; this game never misses" : ""}).`;
       msg = traded
-        ? `${res} Your price: ${pstr}. The sharp bought your ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}.`
+        ? `${res} Your price: ${pstr}. The sharp bought your ticket for ${pstr}; it paid ${last.match ? 1 : 0}. You: ${delta > 0 ? "+" : ""}${delta}. ${certain ? "Same result every hand — that sameness IS the certainty you're mispricing." : ""}`
         : `${res} Your price ${pstr} equals the true odds — the sharp declined to trade. No money moved.`;
     } else {
       msg = traded
-        ? `${n} hands, ${matches} matches. The sharp bought ${traded} tickets at ${pstr}; the tickets paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips.`
-        : `${n} hands, ${matches} matches — and the sharp never traded once. Your price equals the true odds; correct bookmaking is quiet.`;
+        ? `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched${certain ? " (all of them — this game never misses)" : ""}. The sharp bought ${traded} tickets at ${pstr}; the tickets paid out ${matches}. You: ${delta > 0 ? "+" : ""}${delta} chips.`
+        : `Hands #${startNo}–#${startNo + n - 1}: ${matches} of ${n} matched — and the sharp never traded once. Your price equals the true odds; correct bookmaking is quiet.`;
     }
+    setHandNo(handNo + n);
     setLastPlay(msg);
     setBankroll(Math.round(bk * 2) / 2); setBets(hist.slice(-300));
   }
@@ -198,7 +202,7 @@ export default function CardTable() {
         <div style={{ marginTop: 18, fontWeight: 700, fontSize: 14 }}>Pick a game</div>
         <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           {Object.entries(GAMES).map(([k, gm]) => (
-            <button key={k} onClick={() => { setGame(k); setHand(null); setGuess(null); setBets([]); setLastPlay(null); }}
+            <button key={k} onClick={() => { setGame(k); setHand(null); setGuess(null); setBets([]); setLastPlay(null); setHandNo(0); }}
               style={{ flex: "1 1 175px", textAlign: "left", padding: "10px 12px", borderRadius: 10, cursor: "pointer", background: world.panel, color: world.ink, border: game === k ? `2px solid ${insp ? "#23404A" : "#C9A227"}` : "1px solid rgba(128,128,128,.35)" }}>
               <div style={{ fontWeight: 700, fontSize: 13.5 }}>{gm.name}</div>
               <div style={{ fontSize: 11.5, opacity: 0.7, marginTop: 2 }}>{gm.tag}</div>
@@ -274,8 +278,8 @@ export default function CardTable() {
           </div>
           <div style={{ fontSize: 13, marginBottom: 10 }}>
             Price{" "}
-            <button onClick={() => { setSheet("street"); setBets([]); setLastPlay(null); }} style={pill(sheet === "street", insp)}>street-by-street (price ½)</button>{" "}
-            <button onClick={() => { setSheet("whole"); setBets([]); setLastPlay(null); }} style={pill(sheet === "whole", insp)}>whole-hand (price {actual.den === 1 ? "1" : "½"})</button>
+            <button onClick={() => { setSheet("street"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "street", insp)}>street-by-street (price ½)</button>{" "}
+            <button onClick={() => { setSheet("whole"); setBets([]); setLastPlay(null); setHandNo(0); }} style={pill(sheet === "whole", insp)}>whole-hand (price {actual.den === 1 ? "1" : "½"})</button>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 26, fontWeight: 700 }}>
@@ -283,7 +287,7 @@ export default function CardTable() {
             </div>
             <button onClick={() => playBets(1)} style={btn(insp)}>Play 1 hand</button>
             <button onClick={() => playBets(100)} style={btn(insp)}>Play 100</button>
-            <button onClick={() => { setBankroll(100); setBets([]); setLastPlay(null); }} style={btn(insp)}>Reset</button>
+            <button onClick={() => { setBankroll(100); setBets([]); setLastPlay(null); setHandNo(0); }} style={btn(insp)}>Reset</button>
           </div>
           {lastPlay && (
             <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.55, background: insp ? "rgba(35,64,74,.08)" : "rgba(0,0,0,.22)", borderRadius: 8, padding: "9px 12px" }}>
