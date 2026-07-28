@@ -3,9 +3,16 @@
    python3 tools/build_standalone.py
 Exists because hand-regenerating this once injected literal backslash-n into the
 script body (blank page). This script is the only supported way to rebuild."""
-import io, os, sys
+import io, os, sys, re
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-jsx = io.open(os.path.join(root, "src", "App.jsx"), encoding="utf-8").read()
+eng = io.open(os.path.join(root, "src", "engine.js"), encoding="utf-8").read()
+eng = eng.replace("export const", "const").replace("export function", "function")
+app = io.open(os.path.join(root, "src", "App.jsx"), encoding="utf-8").read()
+app = re.sub(r'import \{[^}]*\} from "\./engine\.js";\n', "", app)
+single = app.replace('import { useState, useRef } from "react";\n', 'import { useState, useRef } from "react";\n\n' ) 
+single = single.replace('import { useState, useRef } from "react";', 'import { useState, useRef } from "react";\n\n' + eng.rstrip() + "\n")
+io.open(os.path.join(root, "..", "card-table-app.jsx"), "w", encoding="utf-8").write(single)
+jsx = single
 jsx = jsx.replace('import { useState, useRef } from "react";', "const { useState, useRef } = React;")
 jsx = jsx.replace("export default function CardTable()", "function CardTable()")
 jsx += "\nReactDOM.createRoot(document.getElementById(\"root\")).render(React.createElement(CardTable));\n"

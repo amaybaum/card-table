@@ -23,9 +23,12 @@ commit, push. Live in about two minutes.** Nothing to build or rename by hand.
 
 ## Layout
 
-- `src/App.jsx` — the entire app. The game engine is the ~50 framework-free lines at
-  the top, with a self-test at load asserting the odds table (1/2, 1, 1/2). Read it:
-  there is no trick to find.
+- `src/engine.js` — the entire game physics (~80 framework-free lines), exact and
+  auditable. `src/App.jsx` is only the interface.
+- `src/engine.test.js` — unit tests: the odds table proven exhaustively (no statistics),
+  swap involution, determinism, fringe nodes, and every hidden integer of the slit
+  samplers audited against the tables. `npm test` runs them; the deploy workflow runs
+  them before every build, so a failing test blocks deployment.
 - `src/main.jsx`, `index.html`, `vite.config.js`, `package.json` — standard Vite
   scaffolding. `npm install && npm run dev` for local development with live reload.
 - `tools/build_standalone.py` — optional: generates a single self-contained HTML file
