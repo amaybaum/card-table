@@ -105,7 +105,7 @@ export default function CardTable() {
                   peek: {peekMode ? "ON — hidden cards inspected mid-hand" : "OFF — playing blind"}
                 </button>
                 <button onClick={() => playCards(1)} style={btn()}>play 1 hand</button>
-                <button onClick={() => playCards(100)} style={btn()}>play 100</button>
+                <button onClick={() => playCards(200)} style={btn()}>play 200</button>
                 <button onClick={() => { setCardsOff(Array(LINE_N).fill(0)); setCardsOn(Array(LINE_N).fill(0)); setLastHand(null); }} style={btn()}>reset</button>
               </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
