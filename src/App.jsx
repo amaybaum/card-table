@@ -142,15 +142,33 @@ export default function CardTable() {
 
   function switchGame(k) { setGame(k); setHand(null); setBets([]); setLastPlay(null); setHandNo(0); }
   function deal() {
-    const refund = hand && !hand.settled ? 0.5 : 0;   // abandoning an unfinished hand voids its ticket
-    setBankroll((x) => Math.round((x - 0.5 + refund) * 2) / 2);
+    const refund = hand && !hand.settled ? (hand.decision === "raise" ? 1 : 0.5) : 0; // abandoning voids the hand
+    setBankroll((x) => Math.round((x - 0.5 + refund) * 2) / 2);                        // fresh ante
     setHand(dealHand(game, rng.current)); setStep(0);
   }
+  const decisionStep = hand ? hand.trace.length - 3 : -1;   // the street before the final swap
+  const needDecision = hand && !hand.folded && !hand.decision && step === decisionStep;
+
+  function decide(d) {
+    if (d === "fold") {
+      setHand({ ...hand, folded: true, decision: "fold", settled: true });
+      setBets((b) => [...b, { pnl: -0.5, match: false }].slice(-300));
+      setHandNo((n) => n + 1);
+      setStep(hand.trace.length - 1);
+      return;
+    }
+    if (d === "raise") setBankroll((x) => Math.round((x - 0.5) * 2) / 2);   // another ½ into the pot
+    setHand({ ...hand, decision: d });
+  }
+
   function next() {
+    if (needDecision) return;
     const target = Math.min(hand.trace.length - 1, step + 1);
     if (target === hand.trace.length - 1 && !hand.settled) {
-      const pnl = (hand.match ? 1 : 0) - 0.5;
-      setBankroll((x) => Math.round((x + (hand.match ? 1 : 0)) * 2) / 2);   // ticket was paid at the deal
+      const stake = hand.decision === "raise" ? 1 : 0.5;
+      const collect = hand.match ? stake * 2 : 0;               // even money on the whole pot
+      const pnl = collect - stake;
+      setBankroll((x) => Math.round((x + collect) * 2) / 2);    // stakes were paid at deal/raise
       setBets((b) => [...b, { pnl, match: hand.match }].slice(-300));
       setHandNo((n) => n + 1);
       setHand({ ...hand, settled: true });
@@ -165,7 +183,7 @@ export default function CardTable() {
     const t = [d, s1, { label: "peek", v: s1.v, h: freshH, peeked: seen },
                { label: "shuffle2", v: v2, h: h2 }, { label: "showdown", v: v2, h: h2 }];
     setHand({ dealt: d.v, final: v2, match: v2 === d.v, peeked: true, trace: t });
-    setStep(2);
+    setStep(2);                     // the street re-opens, now with your information
   }
 
   // Auto-play: n blind hands, each carrying the standard 1/2 ticket, settled instantly.
@@ -243,7 +261,7 @@ export default function CardTable() {
         <div style={{ background: world.panel, borderRadius: 14, padding: "20px 16px", marginTop: 12 }}>
           {!hand ? (
             <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <button onClick={deal} style={{ ...btn(insp), fontSize: 15, padding: "10px 22px" }}>Deal (ticket: ½)</button>
+              <button onClick={deal} style={{ ...btn(insp), fontSize: 15, padding: "10px 22px" }}>Deal (ante: ½)</button>
             </div>
           ) : (
             <div>
@@ -262,27 +280,36 @@ export default function CardTable() {
                     
                   </div>
                   <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12.5, marginBottom: 6 }}>
-                    Your ticket: paid ½ at the deal → collected {hand.match ? 1 : 0} ({hand.match ? "+½" : "−½"})
-                    {hand.peeked && " — after your peek this was a fair coin flip; the edge you'd paid for was already gone"}
+                    {hand.folded
+                      ? "You folded. Ante forfeited (−½)."
+                      : `Pot: ${hand.decision === "raise" ? "1 (you raised)" : "½"} → collected ${hand.match ? (hand.decision === "raise" ? 2 : 1) : 0} (${hand.match ? (hand.decision === "raise" ? "+1" : "+½") : (hand.decision === "raise" ? "−1" : "−½")})`}
+                    {hand.peeked && !hand.folded && " — after your peek this was a fair coin flip; any bet was even money"}
                   </div>
                   {hand.peeked ? EXPLAIN.peek + " You bought this ticket at ½ when it was worth " + (game === "cond" ? "¾" : "1") + ". Then you looked, and it became worth exactly what you paid. The peek cost you the difference — the cost of looking, measured in chips." : EXPLAIN[game]}
                 </div>
               )}
-              {game === "two" && !hand.peeked && step === 1 && (
+              {needDecision && (
                 <div style={{ textAlign: "center", marginTop: 12, fontSize: 13.5, background: insp ? "rgba(35,64,74,.10)" : "rgba(201,162,39,.16)", border: `1px dashed ${insp ? "#23404A" : "#C9A227"}`, borderRadius: 10, padding: "10px 12px" }}>
-                  <b>Your call.</b> Play on blind — or look at your card now?
-                  <div style={{ marginTop: 8 }}>
-                    <button onClick={applyPeek} style={btn(insp)}>peek (burns your card)</button>{" "}
-                    <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }}>play on →</button>
+                  <b>The street.</b> ½ is in the pot. The house prices this hand at 50/50 — bet against it?
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                    <button onClick={() => decide("fold")} style={btn(insp)}>fold (forfeit ½)</button>
+                    <button onClick={() => decide("call")} style={btn(insp)}>call (ride the ½)</button>
+                    <button onClick={() => decide("raise")} style={{ ...btn(insp), fontWeight: 700 }}>raise (+½, doubled stakes)</button>
                   </div>
+                  {game === "two" && !hand.peeked && (
+                    <div style={{ marginTop: 8, fontSize: 12.5, opacity: 0.85 }}>
+                      or pay for information first:{" "}
+                      <button onClick={applyPeek} style={btn(insp)}>peek (burns your card)</button>
+                    </div>
+                  )}
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 14 }}>
                 <button onClick={() => setStep(Math.max(0, step - 1))} style={btn(insp)} disabled={step === 0}>&larr; back</button>
-                <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown}>
+                <button onClick={next} style={{ ...btn(insp), fontWeight: 700 }} disabled={atShowdown || needDecision}>
                   {beforeShowdown ? "showdown \u2192" : "next \u2192"}
                 </button>
-                <button onClick={deal} style={btn(insp)}>redeal (new ticket: ½)</button>
+                <button onClick={deal} style={btn(insp)}>redeal (new ante: ½)</button>
               </div>
             </div>
           )}
@@ -292,12 +319,13 @@ export default function CardTable() {
         <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 12 }}>
           <div style={{ fontWeight: 700, fontSize: 14 }}>The counter</div>
           <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6, margin: "6px 0 10px" }}>
-            Every hand you deal above carries a ticket, bought at the house's lazy price:
-            <b> ½ a chip, pays 1 on a match</b> (&ldquo;each shuffle is 50/50,&rdquo; says the house).
-            True odds this game: <b>{oddsStr}</b> — so blind hands are bought at a discount, and
-            <b> peeking burns an edge you already paid for</b>. The meter below is interference,
-            collected in cash. (Sell at the lazy price yourself and it flows the other way:
-            mispricing is a transfer, not a fine.)
+            Every hand above starts with an <b>ante of ½</b>, and the house books all action at even
+            money because it prices every street the lazy way: &ldquo;each shuffle is 50/50.&rdquo; True odds
+            this game: <b>{oddsStr}</b> — so blind calls are underpriced and blind <b>raises</b> are the
+            whole edge, while <b>peeking burns the edge before you can bet it</b>. In the casino you came
+            from, information helps you bet; at this table, extracting it destroys what you'd bet on.
+            The meter below is interference, collected in cash. (Sell at the lazy price yourself and it
+            flows the other way: mispricing is a transfer, not a fine.)
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 26, fontWeight: 700 }}>
