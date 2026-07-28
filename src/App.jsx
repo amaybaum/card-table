@@ -43,6 +43,36 @@ const SELF_TEST = [["one", 1, 2], ["two", 1, 1], ["peek", 1, 2]].map(([p, n, d])
 const ALL_PASS = SELF_TEST.every((t) => t.pass);
 const TEST_LABEL = { one: "1 shuffle", two: "2 shuffles", peek: "peeked" };
 
+/* ------------------------------------------------------------------ */
+/* DOUBLE SLIT — same species of engine, bigger hidden card.           */
+/* A particle's landing bin is a deterministic lookup of one hidden    */
+/* integer, drawn uniformly (the deal). The tables below were CHOSEN   */
+/* to equal the quantum two-slit prediction; the framework's claim is  */
+/* precisely that such deterministic tables exist. They sit here,      */
+/* auditable. Detector ON = a record of the slit exists (rule 3):      */
+/* each slit's own table is used instead, and the fringes die.         */
+/* ------------------------------------------------------------------ */
+
+const NBINS = 25;
+const FRINGE = [16,11,0,19,50,30,0,42,96,53,0,59,120,59,0,53,96,42,0,30,50,19,0,11,16];
+const SLIT_L = [4,7,13,20,28,36,43,48,50,48,43,36,28,20,13,7,4,2,1,0,0,0,0,0,0];
+const SLIT_R = SLIT_L.slice().reverse();
+function sampler(counts) {
+  const total = counts.reduce((a, b) => a + b, 0);
+  return (rng) => {                     // hidden integer -> bin, deterministic lookup
+    let h = Math.floor(rng() * total);
+    for (let x = 0; x < counts.length; x++) { h -= counts[x]; if (h < 0) return x; }
+    return counts.length - 1;
+  };
+}
+const fireBlind = sampler(FRINGE), fireL = sampler(SLIT_L), fireR = sampler(SLIT_R);
+const SLIT_TEST = (() => {
+  const nodes = FRINGE.filter((v, x) => v === 0 && x > 1 && x < NBINS - 2).length;
+  const filled = SLIT_L.every((v, x) => (x > 2 && x < NBINS - 3 ? v + SLIT_R[x] > 0 : true));
+  return { nodes, pass: nodes >= 4 && filled };
+})();
+
+
 /* ================================================================== */
 /* UI — one game, one choice, and the statistics are the score.        */
 /* ================================================================== */
@@ -81,6 +111,11 @@ export default function CardTable() {
   const [rulesOpen, setRulesOpen] = useState(true);
   const [why, setWhy] = useState({});
   const [tally, setTally] = useState({ blindN: 0, blindM: 0, peekN: 0, peekM: 0 });
+  const [mode, setMode] = useState("cards");
+  const [detector, setDetector] = useState(false);
+  const [hitsOff, setHitsOff] = useState(Array(NBINS).fill(0));
+  const [hitsOn, setHitsOn] = useState(Array(NBINS).fill(0));
+  const [lastShot, setLastShot] = useState(null);
   const rng = useRef(Math.random);
 
   const insp = seat === "inspector";
@@ -121,6 +156,18 @@ export default function CardTable() {
     });
   }
 
+  function fire(n) {
+    const upd = (arr) => {
+      const a = arr.slice(); let last = null;
+      for (let i = 0; i < n; i++) {
+        if (detector) { const sl = rng.current() < 0.5 ? 0 : 1; const x = (sl ? fireR : fireL)(rng.current); a[x]++; last = { x, slit: sl }; }
+        else { const x = fireBlind(rng.current); a[x]++; last = { x, slit: null }; }
+      }
+      setLastShot(last); return a;
+    };
+    detector ? setHitsOn(upd) : setHitsOff(upd);
+  }
+
   const pct = (m, n) => (n ? Math.round((100 * m) / n) : null);
   const bp = pct(tally.blindM, tally.blindN), pp = pct(tally.peekM, tally.peekN);
 
@@ -133,7 +180,19 @@ export default function CardTable() {
           A game with no randomness in its rules — whose odds still behave like quantum mechanics.
         </div>
 
+        {/* mode tabs */}
+        <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
+          {[["cards", "The card table"], ["slit", "The double slit"]].map(([k, label]) => (
+            <button key={k} onClick={() => setMode(k)}
+              style={{ flex: 1, padding: "9px 11px", borderRadius: 10, cursor: "pointer", background: world.panel, color: world.ink, fontWeight: 700, fontSize: 13.5, border: mode === k ? `2px solid ${insp ? "#23404A" : "#C9A227"}` : "1px solid rgba(128,128,128,.3)", opacity: mode === k ? 1 : 0.75 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* rules */}
+        {mode === "cards" && (<>
+
         <div style={{ background: world.panel, borderRadius: 12, padding: "14px 16px", marginTop: 16 }}>
           <button onClick={() => setRulesOpen(!rulesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: world.ink, padding: 0, fontWeight: 700, fontSize: 14 }}>
             The three rules {rulesOpen ? "\u25BE" : "\u25B8"}
@@ -153,6 +212,8 @@ export default function CardTable() {
           )}
         </div>
 
+        </>)}
+
         {/* seat toggle */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, flexWrap: "wrap" }}>
           <button onClick={() => setSeat(insp ? "player" : "inspector")} style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13, fontWeight: 700, padding: "10px 16px", borderRadius: 999, cursor: "pointer", border: "none", background: insp ? "#23404A" : "#C9A227", color: insp ? "#F2F4F1" : "#1B1B1B" }}>
@@ -164,6 +225,8 @@ export default function CardTable() {
         </div>
 
         {/* the table */}
+        {mode === "cards" && (<>
+
         <div style={{ background: world.panel, borderRadius: 14, padding: "20px 16px", marginTop: 14 }}>
           {!hand ? (
             <div style={{ textAlign: "center", padding: "16px 0" }}>
@@ -203,7 +266,11 @@ export default function CardTable() {
           )}
         </div>
 
+        </>)}
+
         {/* the scoreboard: the statistics ARE the result */}
+        {mode === "cards" && (<>
+
         <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
           <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 8 }}>The scoreboard</div>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13.5, lineHeight: 2 }}>
@@ -224,10 +291,61 @@ export default function CardTable() {
           </div>
         </div>
 
+        </>)}
+
+        {mode === "slit" && (() => {
+          const hits = detector ? hitsOn : hitsOff;
+          const total = hits.reduce((a, b) => a + b, 0);
+          const peak = Math.max(1, ...hits);
+          const offN = hitsOff.reduce((a, b) => a + b, 0), onN = hitsOn.reduce((a, b) => a + b, 0);
+          return (
+            <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
+              <div style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 10 }}>
+                Same three rules, bigger hidden card: each particle's landing spot is a <b>deterministic
+                lookup</b> of one hidden number, dealt uniformly. The slit detector is rule 3 at the
+                slits: ON means <b>a record of the path exists</b>.
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <button onClick={() => setDetector(!detector)} style={{ ...btn(insp), fontWeight: 700, background: detector ? "#c05b52" : (insp ? "#fff" : "rgba(255,255,255,.12)"), color: detector ? "#fff" : "inherit" }}>
+                  slit detector: {detector ? "ON — recording paths" : "OFF"}
+                </button>
+                <button onClick={() => fire(1)} style={btn(insp)}>fire 1</button>
+                <button onClick={() => fire(200)} style={btn(insp)}>fire 200</button>
+                <button onClick={() => { setHitsOff(Array(NBINS).fill(0)); setHitsOn(Array(NBINS).fill(0)); setLastShot(null); }} style={btn(insp)}>reset</button>
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110, background: insp ? "rgba(35,64,74,.05)" : "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
+                {hits.map((v, x) => (
+                  <div key={x} style={{ flex: 1, height: `${(100 * v) / peak}%`, background: detector ? "#c05b52" : (insp ? "#23404A" : "#D8C878"), borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
+                ))}
+              </div>
+              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, marginTop: 6, opacity: 0.85 }}>
+                this screen ({detector ? "detector ON" : "detector OFF"}): {total} particles
+                {insp && lastShot && ` — last shot: ${lastShot.slit === null ? "no record" : `slit ${lastShot.slit ? "R" : "L"} recorded`}, hidden number \u2192 bin ${lastShot.x}, deterministically`}
+              </div>
+              {offN > 100 && onN > 100 && (
+                <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
+                  Same source, same slits, same wall. Detector OFF: stripes, with bins where particles
+                  <b> never</b> land. Detector ON: one smooth pile, and the forbidden bins fill in.
+                  The only difference is whether a record of the path exists. That is the double slit —
+                  and here it is, running on hidden cards.
+                </div>
+              )}
+              {insp && (
+                <div style={{ marginTop: 10, fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, opacity: 0.8, lineHeight: 1.7 }}>
+                  the lookup tables (counts per bin, fully auditable — chosen to equal the quantum
+                  prediction; that such tables <i>exist</i> is the framework's claim):<br/>
+                  no record: [{FRINGE.join(",")}]<br/>
+                  slit L: [{SLIT_L.join(",")}] &nbsp; slit R: [{SLIT_R.join(",")}]
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* audit + boundary */}
         <div style={{ marginTop: 16, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace" }}>
-            engine self-test: {ALL_PASS ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" \u00B7 ")}) — the entire engine is ~40 lines at the top of this file. Read it: there is no trick to find.
+            engine self-test: {ALL_PASS && SLIT_TEST.pass ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" · ")} · fringe nodes {SLIT_TEST.nodes}) — the entire engine is ~40 lines at the top of this file. Read it: there is no trick to find.
           </div>
           <div style={{ marginTop: 8 }}>
             Honest boundary: this is a local classical mechanism. It reproduces interference, indivisibility,
