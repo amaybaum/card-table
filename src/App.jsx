@@ -80,11 +80,11 @@ export default function CardTable() {
             {rulesOpen && (
               <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
                 <Rule n={1} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<>Each hand: <b>two hidden cards are dealt from a standard 52-card deck</b>. Red suits (♥♦) move your marker left, black (♠♣) right, by the card's rank — ace 1 up to king 13. The marker starts at 0. Question: <i>where does it end up?</i></>}
+                  text={<>Each hand: <b>two hidden cards are dealt from the aces through sixes of a standard deck</b> — a 24-card strip deck. Red suits (♥♦) move your marker left, black (♠♣) right, by the card's rank — ace 1 up to six 6. The marker starts at 0. Question: <i>where does it end up?</i></>}
                   whyText={<>The deal is the <b>only randomness in the game</b> — it stands for not knowing the world's starting conditions. Everything after is fixed by the rules, so there are no dice to blame the strangeness on. The hidden card is the point: the world contains more than you can see, and the rules use that part too.</>} />
                 <Rule n={2} why={why} setWhy={setWhy} ink={world.ink}
                   text={<>The only move is the <b>shuffle: a hidden card moves the marker by its rank</b>, behind the dealer's screen. Not random, and reversible — every move can be undone. Each hand is four moves: <b>the first card acts twice, then the second acts twice</b> — then showdown.</>}
-                  whyText={<><b>Deterministic</b>: same input, same result — so probability can only come from what you can't see. <b>Reversible</b>: every move can be undone, so information can hide but never dies. Each card acting <b>twice, in step</b> doubles its move — so odd final positions become impossible: 52 exact nodes — and the two doubled cards <b>add</b>, so the allowed positions pile into an envelope whose 25 tooth heights are shaped by the deck's own make-up. Stripes and shape, both derived; nothing is engineered.</>} />
+                  whyText={<><b>Deterministic</b>: same input, same result — so probability can only come from what you can't see. <b>Reversible</b>: every move can be undone, so information can hide but never dies. Each card acting <b>twice, in step</b> doubles its move — so odd final positions become impossible: 24 exact nodes — and the two doubled cards <b>add</b>, so the allowed positions pile into an envelope shaped by the deck's own make-up. Stripes and shape, both derived; nothing is engineered.</>} />
                 <Rule n={3} why={why} setWhy={setWhy} ink={world.ink}
                   text={<><b>Looking costs.</b> With peek ON, each hidden card is inspected between its two moves — and a seen card is burned and replaced <b>from the remaining deck</b>.</>}
                   whyText={<>In this toy, honestly: a house rule — the toy <i>imposes</i> what real physics <i>derives</i>. In physics there is no passive glance: to see a card you must interact with it. <b>Looking is copying</b> — a record now exists somewhere — and the pattern below is <i>made of</i> a correlation: each card acting twice in step. Burning a card mid-hand makes the four moves <b>independent</b> — the forbidden bins fill in, and independent moves obey the bell-curve theorem: measurement doesn't just erase the stripes, it makes the world normal. Minds are irrelevant: a machine that photographs the card and shows no one destroys the certainty just as thoroughly. What costs is that the record exists, not that anyone reads it.</>} />
@@ -113,8 +113,25 @@ export default function CardTable() {
                   <div key={x} style={{ flex: 1, height: `${(100 * v) / peak}%`, background: peekMode ? "#c05b52" : gold, borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
                 ))}
               </div>
+              {(() => {
+                const other = peekMode ? cardsOff : cardsOn;
+                const oN = other.reduce((a, b) => a + b, 0);
+                if (!oN) return null;
+                return (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, opacity: 0.7, marginBottom: 2 }}>
+                      for comparison — peek {peekMode ? "OFF" : "ON"} ({oN} hands):
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 44, background: "rgba(0,0,0,.25)", borderRadius: 6, padding: "3px 6px 0", opacity: 0.6 }}>
+                      {other.map((v, x) => (
+                        <div key={x} style={{ flex: 1, height: `${(100 * v) / Math.max(1, ...other)}%`, background: peekMode ? gold : "#c05b52", borderRadius: "1px 1px 0 0" }} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{ display: "flex", gap: 1, padding: "3px 6px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, opacity: 0.75 }}>
-                {bins.map((_, x) => <div key={x} style={{ flex: 1, textAlign: "center" }}>{(x + LINE_LO) % 13 === 0 ? x + LINE_LO : ""}</div>)}
+                {bins.map((_, x) => <div key={x} style={{ flex: 1, textAlign: "center" }}>{(x + LINE_LO) % 8 === 0 ? x + LINE_LO : ""}</div>)}
               </div>
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11.5, marginTop: 4, opacity: 0.8, textAlign: "center" }}>
                 where the marker ended up (0 = where it started)
@@ -133,8 +150,8 @@ export default function CardTable() {
                     And the shape is earned, not chosen: doubling forbids the odd positions, addition
                     builds the envelope — and once the records exist, the four moves are independent,
                     so the pile smooths toward a bell curve. <b>Decoherence is the central limit theorem
-                    switching on.</b> (Even the outermost bins are coherence-only: ±52 takes two
-                    same-colour kings acting in step — a peeked hand, drawing its burns from a
+                    switching on.</b> (Even the outermost bins are coherence-only: ±24 takes two
+                    same-colour sixes acting in step — a peeked hand, drawing its burns from a
                     depleted deck, can never get there.)
                   </div>
                 </div>
@@ -169,6 +186,23 @@ export default function CardTable() {
                   <div key={x} style={{ flex: 1, height: `${(100 * v) / peak}%`, background: detector ? "#c05b52" : gold, borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
                 ))}
               </div>
+              {(() => {
+                const other = detector ? hitsOff : hitsOn;
+                const oN = other.reduce((a, b) => a + b, 0);
+                if (!oN) return null;
+                return (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10.5, opacity: 0.7, marginBottom: 2 }}>
+                      for comparison — detector {detector ? "OFF" : "ON"} ({oN} particles):
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 44, background: "rgba(0,0,0,.25)", borderRadius: 6, padding: "3px 6px 0", opacity: 0.6 }}>
+                      {other.map((v, x) => (
+                        <div key={x} style={{ flex: 1, height: `${(100 * v) / Math.max(1, ...other)}%`, background: detector ? gold : "#c05b52", borderRadius: "1px 1px 0 0" }} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, marginTop: 6, opacity: 0.85 }}>
                 this screen ({detector ? "detector ON" : "detector OFF"}): {total} particles
                 {lastShot && ` — last shot: ${lastShot.slit === null ? "no record" : `slit ${lastShot.slit ? "R" : "L"} recorded`}, hidden number \u2192 bin ${lastShot.x}, deterministically`}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { swap, enumerate, dealHand, dealLineHand, lineDist, CARD52, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
+import { swap, enumerate, dealHand, dealLineHand, lineDist, CARDS, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
          fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, SLIT_TEST } from "./engine.js";
 
 const script = (vals) => { let i = 0; return () => vals[i++]; };
@@ -66,30 +66,29 @@ describe("double slit tables", () => {
   });
 });
 
-describe("the 52-card line game", () => {
-  // ground truth computed by independent exact enumeration (python), hardcoded:
-  const EXPECTED_BLIND = [2, 0, 8, 0, 10, 0, 16, 0, 18, 0, 24, 0, 26, 0, 32, 0, 34, 0, 40, 0, 42, 0, 48, 0, 50, 0, 48, 0, 50, 0, 56, 0, 58, 0, 64, 0, 66, 0, 72, 0, 74, 0, 80, 0, 82, 0, 88, 0, 90, 0, 96, 0, 104, 0, 96, 0, 90, 0, 88, 0, 82, 0, 80, 0, 74, 0, 72, 0, 66, 0, 64, 0, 58, 0, 56, 0, 50, 0, 48, 0, 50, 0, 48, 0, 42, 0, 40, 0, 34, 0, 32, 0, 26, 0, 24, 0, 18, 0, 16, 0, 10, 0, 8, 0, 2];
-  const EXPECTED_PEEK = [0, 0, 24, 96, 216, 384, 720, 1056, 1584, 2208, 3048, 3936, 5160, 6432, 7968, 9600, 11424, 13440, 15768, 18144, 20952, 23904, 27216, 30720, 34704, 38784, 43536, 48576, 53904, 59520, 65352, 71232, 77352, 83424, 89568, 95616, 101664, 107424, 113208, 118368, 123672, 128832, 133872, 138528, 143088, 147168, 150984, 154272, 157224, 159456, 161376, 162432, 163128, 162432, 161376, 159456, 157224, 154272, 150984, 147168, 143088, 138528, 133872, 128832, 123672, 118368, 113208, 107424, 101664, 95616, 89568, 83424, 77352, 71232, 65352, 59520, 53904, 48576, 43536, 38784, 34704, 30720, 27216, 23904, 20952, 18144, 15768, 13440, 11424, 9600, 7968, 6432, 5160, 3936, 3048, 2208, 1584, 1056, 720, 384, 216, 96, 24, 0, 0];
+describe("the 24-card line game (aces through sixes)", () => {
+  const EXPECTED_BLIND = [2, 0, 8, 0, 10, 0, 16, 0, 18, 0, 24, 0, 18, 0, 24, 0, 26, 0, 32, 0, 34, 0, 40, 0, 48, 0, 40, 0, 34, 0, 32, 0, 26, 0, 24, 0, 18, 0, 24, 0, 18, 0, 16, 0, 10, 0, 8, 0, 2];
+  const EXPECTED_PEEK = [0, 0, 24, 96, 216, 384, 720, 960, 1392, 1728, 2376, 2880, 3792, 4800, 5928, 7008, 8136, 9120, 9888, 10656, 11616, 12288, 13080, 13440, 13968, 13440, 13080, 12288, 11616, 10656, 9888, 9120, 8136, 7008, 5928, 4800, 3792, 2880, 2376, 1728, 1392, 960, 720, 384, 216, 96, 24, 0, 0];
   const rr = (picks, lens) => { let i = 0; return () => (picks[i] + 0.5) / lens[i++]; };
 
-  it("blind: displacement is 2(a+b) for ALL 2652 ordered deals; deck order mirrored exactly", () => {
-    for (let k1 = 0; k1 < 52; k1++) for (let k2 = 0; k2 < 51; k2++) {
-      const avail = CARD52.map((_, x) => x);
+  it("blind: displacement is 2(a+b) for ALL 552 ordered deals; deck order mirrored exactly", () => {
+    for (let k1 = 0; k1 < 24; k1++) for (let k2 = 0; k2 < 23; k2++) {
+      const avail = CARDS.map((_, x) => x);
       const i = avail.splice(k1, 1)[0], j = avail.splice(k2, 1)[0];
-      const h = dealLineHand(false, rr([k1, k2], [52, 51]));
-      expect(h.d).toBe(2 * CARD52[i].m + 2 * CARD52[j].m);
-      expect(h.cards.a).toBe(CARD52[i]);
-      expect(h.cards.b).toBe(CARD52[j]);
+      const h = dealLineHand(false, rr([k1, k2], [24, 23]));
+      expect(h.d).toBe(2 * CARDS[i].m + 2 * CARDS[j].m);
+      expect(h.cards.a).toBe(CARDS[i]);
+      expect(h.cards.b).toBe(CARDS[j]);
     }
   });
-  it("peeked: displacement is a+a'+b+b' on scripted spot deals; replacements come from the depleted deck", () => {
+  it("peeked: displacement is a+a'+b+b' on scripted spot deals; burns drawn from the depleted deck", () => {
     for (let trial = 0; trial < 500; trial++) {
-      const k1 = trial % 52, k2 = (trial * 7) % 51, k3 = (trial * 13) % 50, k4 = (trial * 29) % 49;
-      const avail = CARD52.map((_, x) => x);
+      const k1 = trial % 24, k2 = (trial * 7) % 23, k3 = (trial * 13) % 22, k4 = (trial * 29) % 21;
+      const avail = CARDS.map((_, x) => x);
       const i = avail.splice(k1, 1)[0], j = avail.splice(k2, 1)[0];
       const k = avail.splice(k3, 1)[0], l = avail.splice(k4, 1)[0];
-      const h = dealLineHand(true, rr([k1, k2, k3, k4], [52, 51, 50, 49]));
-      expect(h.d).toBe(CARD52[i].m + CARD52[k].m + CARD52[j].m + CARD52[l].m);
+      const h = dealLineHand(true, rr([k1, k2, k3, k4], [24, 23, 22, 21]));
+      expect(h.d).toBe(CARDS[i].m + CARDS[k].m + CARDS[j].m + CARDS[l].m);
       expect(new Set([h.cards.a, h.cards.b, h.cards.a2, h.cards.b2]).size).toBe(4);
     }
   });
@@ -97,15 +96,15 @@ describe("the 52-card line game", () => {
     expect(lineDist(false)).toEqual(EXPECTED_BLIND);
     expect(lineDist(true)).toEqual(EXPECTED_PEEK);
   });
-  it("structure: 52 odd nodes; edges \u00b152 are coherence-only (blind reaches them, peeked cannot)", () => {
+  it("structure: 24 odd nodes; edges \u00b124 are coherence-only", () => {
     expect(LINE_TEST.pass).toBe(true);
-    expect(LINE_TEST.nodes).toBe(52);
+    expect(LINE_TEST.nodes).toBe(24);
     expect(EXPECTED_BLIND[0]).toBeGreaterThan(0);
     expect(EXPECTED_PEEK[0]).toBe(0);
-    expect(EXPECTED_PEEK[LINE_N - 1]).toBe(0);
+    expect(EXPECTED_PEEK[48]).toBe(0);
   });
   it("symmetry: both distributions exactly even", () => {
     for (const d of [EXPECTED_BLIND, EXPECTED_PEEK])
-      for (let x = 0; x < LINE_N; x++) expect(d[x]).toBe(d[LINE_N - 1 - x]);
+      for (let x = 0; x < 49; x++) expect(d[x]).toBe(d[48 - x]);
   });
 });

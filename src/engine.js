@@ -51,9 +51,9 @@ export const TEST_LABEL = { one: "1 shuffle", two: "2 shuffles", peek: "peeked" 
 /* each slit's own table is used instead, and the fringes die.         */
 /* ------------------------------------------------------------------ */
 
-export const NBINS = 105;
-export const FRINGE = [11, 0, 14, 0, 16, 0, 19, 0, 22, 0, 26, 0, 30, 0, 34, 0, 39, 0, 44, 0, 49, 0, 55, 0, 61, 0, 67, 0, 73, 0, 79, 0, 85, 0, 91, 0, 96, 0, 101, 0, 106, 0, 110, 0, 114, 0, 116, 0, 118, 0, 120, 0, 120, 0, 120, 0, 118, 0, 116, 0, 114, 0, 110, 0, 106, 0, 101, 0, 96, 0, 91, 0, 85, 0, 79, 0, 73, 0, 67, 0, 61, 0, 55, 0, 49, 0, 44, 0, 39, 0, 34, 0, 30, 0, 26, 0, 22, 0, 19, 0, 16, 0, 14, 0, 11];
-export const SLIT_L = [6, 6, 7, 7, 8, 9, 10, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 29, 30, 32, 33, 35, 36, 38, 39, 41, 42, 44, 45, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 58, 59, 59, 60, 60, 60, 60, 60, 60, 60, 59, 59, 58, 58, 57, 56, 55, 54, 53, 52, 51, 49, 48, 47, 45, 44, 42, 41, 39, 38, 36, 35, 33, 32, 30, 29, 27, 26, 25, 23, 22, 21, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 10, 9, 8, 7, 7, 6, 6];
+export const NBINS = 49;
+export const FRINGE = [11, 0, 16, 0, 23, 0, 31, 0, 42, 0, 53, 0, 66, 0, 79, 0, 92, 0, 103, 0, 112, 0, 118, 0, 120, 0, 118, 0, 112, 0, 103, 0, 92, 0, 79, 0, 66, 0, 53, 0, 42, 0, 31, 0, 23, 0, 16, 0, 11];
+export const SLIT_L = [6, 7, 8, 10, 11, 13, 16, 18, 21, 24, 27, 30, 33, 36, 40, 43, 46, 49, 52, 54, 56, 58, 59, 60, 60, 60, 59, 58, 56, 54, 52, 49, 46, 43, 40, 36, 33, 30, 27, 24, 21, 18, 16, 13, 11, 10, 8, 7, 6];
 export const SLIT_R = SLIT_L.slice().reverse();
 export function sampler(counts) {
   const total = counts.reduce((a, b) => a + b, 0);
@@ -73,37 +73,38 @@ export const SLIT_TEST = (() => {
 
 
 /* ------------------------------------------------------------------ */
-/* THE LINE GAME, on a standard 52-card deck.                          */
-/* Two hidden cards are DEALT (without replacement). Red suits move    */
-/* the marker left, black right, by rank (A=1 .. K=13). EACH CARD ACTS */
-/* TWICE (A,A,B,B) behind the dealer's screen; screen = final marker   */
-/* position, -52..+52. Blind: displacement 2a+2b — 52 exact odd nodes, */
-/* a 25-height envelope shaped by the deck's own make-up. Peek (rule 3,*/
-/* between a card's two moves) burns it; the replacement comes from    */
-/* the REMAINING deck — so the outermost bins (\u00b152, two same-colour  */
-/* kings in step) are reachable ONLY without measurement.              */
+/* THE LINE GAME, on a 24-card strip deck (aces through sixes of a     */
+/* standard deck). Two hidden cards are DEALT (without replacement).   */
+/* Red suits move the marker left, black right, by rank (A=1 .. 6).    */
+/* EACH CARD ACTS TWICE (A,A,B,B) behind the dealer's screen; screen = */
+/* final marker position, -24..+24. Blind: displacement 2a+2b — 24     */
+/* exact odd nodes under an 11-height envelope shaped by the deck's    */
+/* own make-up. Peek (rule 3, between a card's two moves) burns it;    */
+/* the replacement comes from the REMAINING deck — so the outermost    */
+/* bins (\u00b124, two same-colour sixes in step) are reachable ONLY     */
+/* without measurement.                                                */
 /* ------------------------------------------------------------------ */
 
-export const SUITS = ["\u2660", "\u2665", "\u2666", "\u2663"];   // spade, heart, diamond, club
-export const CARD52 = [];
-for (let r = 1; r <= 13; r++)
+export const SUITS = ["\u2660", "\u2665", "\u2666", "\u2663"];
+export const CARDS = [];
+for (let r = 1; r <= 6; r++)
   for (let si = 0; si < 4; si++) {
     const red = si === 1 || si === 2;
-    CARD52.push({ r, s: SUITS[si], m: red ? -r : r });
+    CARDS.push({ r, s: SUITS[si], m: red ? -r : r });
   }
-export const RANKS = { 1: "A", 11: "J", 12: "Q", 13: "K" };
+export const RANKS = { 1: "A" };
 export const cardLabel = (c) => `${RANKS[c.r] || c.r}${c.s}`;
-export const LINE_LO = -52, LINE_HI = 52, LINE_N = 105;
+export const LINE_LO = -24, LINE_HI = 24, LINE_N = 49;
 function drawFrom(avail, rng) { const k = Math.floor(rng() * avail.length); return avail.splice(k, 1)[0]; }
 export function dealLineHand(peek, rng) {
-  const avail = CARD52.map((_, i) => i);
-  const A = CARD52[drawFrom(avail, rng)], B = CARD52[drawFrom(avail, rng)];
+  const avail = CARDS.map((_, i) => i);
+  const A = CARDS[drawFrom(avail, rng)], B = CARDS[drawFrom(avail, rng)];
   if (!peek) return { d: 2 * A.m + 2 * B.m, peeked: false, cards: { a: A, b: B } };
-  const A2 = CARD52[drawFrom(avail, rng)], B2 = CARD52[drawFrom(avail, rng)];
+  const A2 = CARDS[drawFrom(avail, rng)], B2 = CARDS[drawFrom(avail, rng)];
   return { d: A.m + A2.m + B.m + B2.m, peeked: true, cards: { a: A, b: B, a2: A2, b2: B2 } };
 }
 export function lineDist(peek) {           // exact enumeration over ordered distinct deals
-  const c = Array(LINE_N).fill(0), M = CARD52.map((x) => x.m), n = 52;
+  const c = Array(LINE_N).fill(0), M = CARDS.map((x) => x.m), n = 24;
   for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
     if (j === i) continue;
     if (!peek) { c[2 * M[i] + 2 * M[j] - LINE_LO]++; continue; }
@@ -122,7 +123,7 @@ export const LINE_TEST = (() => {
   const bl = lineDist(false), pk = lineDist(true);
   const nodes = bl.filter((v, x) => (x + LINE_LO) % 2 !== 0 && v === 0).length;
   const heights = new Set(bl.filter((v) => v > 0)).size;
-  const midFilled = pk.every((v, x) => (Math.abs(x + LINE_LO) <= 50 ? v > 0 : true));
+  const midFilled = pk.every((v, x) => (Math.abs(x + LINE_LO) <= 22 ? v > 0 : true));
   const edgesCoherent = bl[0] > 0 && bl[LINE_N - 1] > 0 && pk[0] === 0 && pk[LINE_N - 1] === 0;
-  return { nodes, heights, pass: nodes === 52 && heights >= 15 && midFilled && edgesCoherent };
+  return { nodes, heights, pass: nodes === 24 && heights >= 8 && midFilled && edgesCoherent };
 })();

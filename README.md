@@ -6,19 +6,19 @@ Two experiments with no randomness in their rules — whose statistics still beh
 quantum mechanics. Companion to *The Incompleteness of Observation*, book §1.11
 (DOI 10.5281/zenodo.19060318).
 
-**The card table.** Two hidden cards are dealt from a standard 52-card deck; red suits
+**The card table.** Two hidden cards are dealt from the aces through sixes of a standard deck — a 24-card strip deck; red suits
 (♥♦) move a marker left, black (♠♣) right, by rank — and each card acts **twice**,
-behind the dealer's screen. Played blind, the landing spots form stripes: 52 forbidden
+behind the dealer's screen. Played blind, the landing spots form stripes: 24 forbidden
 positions the marker never reaches, under an envelope shaped by the deck's own make-up —
 all of it derived from the stated rules, nothing engineered. Flip peek ON (each hidden
 card is inspected between its two moves, burned, and replaced from the remaining deck)
 and the stripes die: the forbidden positions fill in and the pile smooths toward a bell
 curve — decoherence as the central limit theorem switching on. Even the outermost bins
-are coherence-only: ±52 takes two same-colour kings acting in step, and no peeked hand
+are coherence-only: ±24 takes two same-colour sixes acting in step, and no peeked hand
 can get there.
 
-**The double slit.** The same grammar at the same 105-bin resolution: fire one particle
-or a thousand, toggle the slit detector, and watch fringes with 14 exact nodes collapse
+**The double slit.** The same grammar at the same 49-bin resolution: fire one particle
+or a thousand, toggle the slit detector, and watch fringes with exact nodes on every odd position collapse
 into one smooth pile the moment a record of the path exists. Here the lookup tables are
 *chosen* to equal the quantum prediction — and printed on the page; that such
 deterministic tables exist at all is the framework's claim.
@@ -40,8 +40,8 @@ app, and deploys it (`.github/workflows/deploy.yml`). **To update the live site:
   core, the 52-card line game with exact enumeration over all ordered deals, and the
   slit tables with their samplers. Exact and auditable; a self-test runs at every page
   load and reports in the footer.
-- `src/engine.test.js` — unit tests: all 2,652 blind deals verified exhaustively with
-  the deck-order mapping mirrored; both 105-bin distributions checked bin-for-bin
+- `src/engine.test.js` — unit tests: all 552 blind deals verified exhaustively with
+  the deck-order mapping mirrored; both 49-bin distributions checked bin-for-bin
   against independently computed ground truth; the coherence-only edge bins asserted;
   swap involution, determinism, symmetry, fringe nodes, and every hidden integer of the
   slit samplers audited. `npm test` runs them locally.
