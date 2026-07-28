@@ -157,7 +157,7 @@ export default function CardTable() {
                   slit detector: {detector ? "ON — recording paths" : "OFF"}
                 </button>
                 <button onClick={() => fire(1)} style={btn()}>fire 1</button>
-                <button onClick={() => fire(200)} style={btn()}>fire 200</button>
+                <button onClick={() => fire(1000)} style={btn()}>fire 1000</button>
                 <button onClick={() => { setHitsOff(Array(NBINS).fill(0)); setHitsOn(Array(NBINS).fill(0)); setLastShot(null); }} style={btn()}>reset</button>
               </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
