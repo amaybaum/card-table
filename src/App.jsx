@@ -124,15 +124,19 @@ export default function CardTable() {
               </div>
               {offN > 30 && onN > 30 && (
                 <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-                  Peek OFF: stripes under a shaped envelope — odd positions are <b>forbidden bins</b>
-                  (each card's doubled move keeps distances even) and the allowed positions pile up
-                  unevenly (the two doubled cards add). Peek ON: every bin fills <b>and the shape smooths
-                  toward a bell curve</b> — with the correlations burned, the four moves are independent,
-                  and independence is what bell curves are made of. <b>Decoherence is the central limit
-                  theorem switching on.</b> (Even the outermost bins are coherence-only: ±52 takes two
-                  same-colour kings acting in step — a peeked hand, drawing burns from a depleted deck,
-                  can never get there.) Nothing here was chosen to look quantum — flip the tab for the
-                  engineered 25-bin version.
+                  Same deck, same deal, same four moves behind the screen. Peek OFF: stripes, with
+                  positions the marker <b>never</b> reaches. Peek ON: one smooth pile, and the forbidden
+                  positions fill in. The only difference is whether a record of the cards exists
+                  mid-hand. That is quantum interference — and here it is, dealt from a standard
+                  52-card deck.
+                  <div style={{ marginTop: 8 }}>
+                    And the shape is earned, not chosen: doubling forbids the odd positions, addition
+                    builds the envelope — and once the records exist, the four moves are independent,
+                    so the pile smooths toward a bell curve. <b>Decoherence is the central limit theorem
+                    switching on.</b> (Even the outermost bins are coherence-only: ±52 takes two
+                    same-colour kings acting in step — a peeked hand, drawing its burns from a
+                    depleted deck, can never get there.)
+                  </div>
                 </div>
               )}
             </div>
