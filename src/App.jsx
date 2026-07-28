@@ -4,6 +4,15 @@ import { swap, enumerate, dealHand, dealLineHand, cardLabel, LINE_LO, LINE_N, LI
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
 
+function MiniCard({ c, dim }) {
+  const red = c.s === "\u2665" || c.s === "\u2666";
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 30, height: 42, borderRadius: 4, background: "#F6F1E3", color: red ? "#B3392E" : "#1B1B1B", border: "1px solid rgba(0,0,0,.4)", boxShadow: "0 1px 3px rgba(0,0,0,.35)", fontWeight: 700, fontSize: 12, lineHeight: 1.05, opacity: dim ? 0.45 : 1, textDecoration: dim ? "line-through" : "none" }}>
+      <span>{c.face}</span><span>{c.s}</span>
+    </span>
+  );
+}
+
 export default function CardTable() {
   const [mode, setMode] = useState("cards");
   const [rulesOpen, setRulesOpen] = useState(true);
@@ -44,13 +53,6 @@ export default function CardTable() {
   }
 
   const fm = (m) => (m > 0 ? `+${m}` : `${m}`);
-  const handStory = (h) => {
-    if (!h) return null;
-    const steps = h.peeked
-      ? `${cardLabel(h.cards.a)} then burned → ${cardLabel(h.cards.a2)}; ${cardLabel(h.cards.b)} then burned → ${cardLabel(h.cards.b2)}`
-      : `${cardLabel(h.cards.a)} twice, ${cardLabel(h.cards.b)} twice`;
-    return `last hand: ${steps} — marker moved ${fm(h.d)}, deterministically`;
-  };
 
   return (
     <div style={{ minHeight: "100vh", background: world.bg, color: world.ink, transition: "background .4s,color .4s", fontFamily: "Iowan Old Style, Palatino Linotype, Georgia, serif" }}>
@@ -139,9 +141,28 @@ export default function CardTable() {
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11.5, marginTop: 4, opacity: 0.8, textAlign: "center" }}>
                 where the marker ended up (0 = where it started)
               </div>
-              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, marginTop: 8, opacity: 0.85, minHeight: 16 }}>
-                this screen (peek {peekMode ? "ON" : "OFF"}): {total} hands{lastHand && <><br />{handStory(lastHand)}</>}
+              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, marginTop: 8, opacity: 0.85 }}>
+                this screen (peek {peekMode ? "ON" : "OFF"}): {total} hands
               </div>
+              {lastHand && (
+                <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12 }}>
+                  <span style={{ opacity: 0.85 }}>last hand:</span>
+                  {lastHand.peeked ? (
+                    <>
+                      <MiniCard c={lastHand.cards.a} dim /><MiniCard c={lastHand.cards.a2} />
+                      <span style={{ opacity: 0.4 }}>|</span>
+                      <MiniCard c={lastHand.cards.b} dim /><MiniCard c={lastHand.cards.b2} />
+                      <span style={{ opacity: 0.8 }}>each first card burned after one move — marker moved {fm(lastHand.d)}</span>
+                    </>
+                  ) : (
+                    <>
+                      <MiniCard c={lastHand.cards.a} /><span style={{ opacity: 0.8 }}>×2</span>
+                      <MiniCard c={lastHand.cards.b} /><span style={{ opacity: 0.8 }}>×2</span>
+                      <span style={{ opacity: 0.8 }}>— marker moved {fm(lastHand.d)}, deterministically</span>
+                    </>
+                  )}
+                </div>
+              )}
               {offN > 30 && onN > 30 && (
                 <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
                   Same deck, same deal, same four moves behind the screen. Peek OFF: stripes, with
@@ -236,10 +257,8 @@ export default function CardTable() {
             engine self-test: {ALL_PASS && SLIT_TEST.pass && LINE_TEST.pass ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" \u00B7 ")} · fringe nodes {SLIT_TEST.nodes} · line nodes {LINE_TEST.nodes}) — the engine is ~80 lines in engine.js, unit-tested. Read it: there is no trick to find.
           </div>
           <div style={{ marginTop: 8 }}>
-            Everything on this page is shown face-up — the hidden cards' values, the lookup tables,
-            the last hand's full history. "Hidden" means hidden from the player <i>inside the game</i>,
-            not from you — and the stripes survive your seeing everything, because the pattern never
-            cared what you know. It cares only whether the game's own record exists (rule 3).
+            Every hand's hidden cards are laid face-up above the moment it ends — but only
+            records made <i>inside</i> a hand (rule 3) touch the pattern.
           </div>
           <div style={{ marginTop: 8 }}>
             Honest boundary: these are local classical mechanisms. They reproduce interference, indivisibility,
