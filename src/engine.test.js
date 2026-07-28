@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { swap, enumerate, dealHand, dealCardHand, cardDist, CARD_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
+import { swap, enumerate, dealHand, dealLineHand, lineDist, LINE_S, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
          fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, SLIT_TEST } from "./engine.js";
 
 const script = (vals) => { let i = 0; return () => vals[i++]; };
@@ -66,25 +66,34 @@ describe("double slit tables", () => {
   });
 });
 
-describe("the 16-rank card game", () => {
-  const r = (vals) => { let i = 0; return () => vals[i++]; };
-  const rk = (k) => (k + 0.5) / 16;
-  it("blind: offset is exactly 2h mod 16 for ALL 256 configurations — odd distances forbidden", () => {
-    for (let v0 = 0; v0 < 16; v0++) for (let h = 0; h < 16; h++) {
-      const hand = dealCardHand(false, r([rk(v0), rk(h)]));
-      expect(hand.offset).toBe((2 * h) % 16);
-      expect(hand.offset % 2).toBe(0);
+describe("the line game", () => {
+  const r = (idxs) => { let i = 0; return () => (idxs[i++] + 0.5) / 8; };
+  const EXPECTED_BLIND = [1,0,2,0,3,0,4,0,3,0,4,0,5,0,6,0,8,0,6,0,5,0,4,0,3,0,4,0,3,0,2,0,1];
+  it("blind: displacement is exactly 2a+2b for ALL 64 configurations — odd positions unreachable", () => {
+    for (let ia = 0; ia < 8; ia++) for (let ib = 0; ib < 8; ib++) {
+      const h = dealLineHand(false, r([ia, ib]));
+      expect(h.d).toBe(2 * LINE_S[ia] + 2 * LINE_S[ib]);
+      expect(Math.abs(h.d) % 2).toBe(0);
+      expect(h.moves).toEqual([LINE_S[ia], LINE_S[ia], LINE_S[ib], LINE_S[ib]]);
     }
   });
-  it("peeked: offset is v'+h-v0 mod 16 for ALL 4096 configurations", () => {
-    for (let v0 = 0; v0 < 16; v0++) for (let h = 0; h < 16; h++) for (let vp = 0; vp < 16; vp++) {
-      const hand = dealCardHand(true, r([rk(v0), rk(h), rk(vp)]));
-      expect(hand.offset).toBe((((vp + h - v0) % 16) + 16) % 16);
-    }
+  it("peeked: displacement is a+a'+b+b' for ALL 4096 configurations", () => {
+    for (let ia = 0; ia < 8; ia++) for (let ib = 0; ib < 8; ib++)
+      for (let ia2 = 0; ia2 < 8; ia2++) for (let ib2 = 0; ib2 < 8; ib2++) {
+        const h = dealLineHand(true, r([ia, ib, ia2, ib2]));
+        expect(h.d).toBe(LINE_S[ia] + LINE_S[ia2] + LINE_S[ib] + LINE_S[ib2]);
+      }
   });
-  it("exact distributions: 8 stripes of 32 with 8 zero nodes; peeked perfectly flat", () => {
-    expect(cardDist(false)).toEqual(Array.from({ length: 16 }, (_, i) => (i % 2 ? 0 : 32)));
-    expect(cardDist(true)).toEqual(Array(16).fill(256));
-    expect(CARD_TEST.pass).toBe(true);
+  it("exact distributions: the verified fringe-under-envelope array; peeked fills every bin", () => {
+    expect(lineDist(false)).toEqual(EXPECTED_BLIND);
+    const pk = lineDist(true);
+    expect(pk.reduce((x, y) => x + y, 0)).toBe(4096);
+    expect(pk.every((v) => v > 0)).toBe(true);
+    expect(LINE_TEST.pass).toBe(true);
+    expect(LINE_TEST.nodes).toBe(16);
+  });
+  it("symmetry: both distributions are exactly even in displacement", () => {
+    for (const d of [lineDist(false), lineDist(true)])
+      for (let i = 0; i < LINE_N; i++) expect(d[i]).toBe(d[LINE_N - 1 - i]);
   });
 });
