@@ -57,6 +57,9 @@ export default function CardTable() {
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "26px 18px 48px" }}>
 
         <h1 style={{ margin: 0, fontSize: 28 }}>The Card Table</h1>
+        <div style={{ fontSize: 15.5, fontStyle: "italic", opacity: 0.92, marginTop: 8, lineHeight: 1.5 }}>
+          Einstein was only half right — God doesn't play dice, but he does play cards.
+        </div>
         <div style={{ fontSize: 13.5, opacity: 0.8, marginTop: 4, lineHeight: 1.5 }}>
           Two experiments with no randomness in their rules — whose odds still behave like quantum mechanics.
         </div>
