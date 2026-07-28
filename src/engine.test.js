@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { swap, enumerate, dealHand, NBINS, FRINGE, SLIT_L, SLIT_R,
+import { swap, enumerate, dealHand, dealCardHand, cardDist, CARD_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
          fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, SLIT_TEST } from "./engine.js";
 
 const script = (vals) => { let i = 0; return () => vals[i++]; };
@@ -63,5 +63,28 @@ describe("double slit tables", () => {
       for (let h = 0; h < total; h++) counts[fire(() => (h + 0.5) / total)]++;
       expect(counts).toEqual(table);            // the marginal IS the table — no sampling error
     }
+  });
+});
+
+describe("the 16-rank card game", () => {
+  const r = (vals) => { let i = 0; return () => vals[i++]; };
+  const rk = (k) => (k + 0.5) / 16;
+  it("blind: offset is exactly 2h mod 16 for ALL 256 configurations — odd distances forbidden", () => {
+    for (let v0 = 0; v0 < 16; v0++) for (let h = 0; h < 16; h++) {
+      const hand = dealCardHand(false, r([rk(v0), rk(h)]));
+      expect(hand.offset).toBe((2 * h) % 16);
+      expect(hand.offset % 2).toBe(0);
+    }
+  });
+  it("peeked: offset is v'+h-v0 mod 16 for ALL 4096 configurations", () => {
+    for (let v0 = 0; v0 < 16; v0++) for (let h = 0; h < 16; h++) for (let vp = 0; vp < 16; vp++) {
+      const hand = dealCardHand(true, r([rk(v0), rk(h), rk(vp)]));
+      expect(hand.offset).toBe((((vp + h - v0) % 16) + 16) % 16);
+    }
+  });
+  it("exact distributions: 8 stripes of 32 with 8 zero nodes; peeked perfectly flat", () => {
+    expect(cardDist(false)).toEqual(Array.from({ length: 16 }, (_, i) => (i % 2 ? 0 : 32)));
+    expect(cardDist(true)).toEqual(Array(16).fill(256));
+    expect(CARD_TEST.pass).toBe(true);
   });
 });

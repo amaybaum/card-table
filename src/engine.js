@@ -71,3 +71,43 @@ export const SLIT_TEST = (() => {
 })();
 
 
+
+/* ------------------------------------------------------------------ */
+/* THE 16-RANK CARD GAME — a distribution, not a binary.               */
+/* Ranks 0..15. The shuffle ADDS the hidden card's rank to yours       */
+/* (mod 16) — deterministic, reversible (subtracting undoes it).       */
+/* Each hand: deal, add, add (the SAME hidden card, twice), showdown.  */
+/* Screen = how far your rank moved. Blind: the move is 2h, so ODD     */
+/* distances are forbidden by parity — 8 stripes, 8 exact nodes,       */
+/* derived from the rules, not chosen. Peek between the adds and the   */
+/* lockstep breaks: all 16 bins, flat.                                 */
+/* ------------------------------------------------------------------ */
+
+export const CARD_Q = 16;
+export function dealCardHand(peek, rng) {
+  const r16 = () => Math.floor(rng() * CARD_Q);
+  const v0 = r16(), h0 = r16();
+  const t = [{ label: "deal", v: v0, h: h0 }];
+  let v = (v0 + h0) % CARD_Q;
+  t.push({ label: "shuffle1", v, h: h0 });
+  if (peek) { const seen = v; v = r16(); t.push({ label: "peek", v, h: h0, peeked: seen }); }
+  v = (v + h0) % CARD_Q;
+  t.push({ label: "shuffle2", v, h: h0 });
+  t.push({ label: "showdown", v, h: h0 });
+  return { dealt: v0, final: v, offset: ((v - v0) % CARD_Q + CARD_Q) % CARD_Q, peeked: !!peek, trace: t };
+}
+export function cardDist(peek) {          // exact enumeration, counts per offset bin
+  const d = Array(CARD_Q).fill(0);
+  for (let v0 = 0; v0 < CARD_Q; v0++)
+    for (let h = 0; h < CARD_Q; h++) {
+      if (peek) { for (let vp = 0; vp < CARD_Q; vp++) d[(((vp + h - v0) % CARD_Q) + CARD_Q) % CARD_Q]++; }
+      else d[(2 * h) % CARD_Q]++;
+    }
+  return d;
+}
+export const CARD_TEST = (() => {
+  const b = cardDist(false), pk = cardDist(true);
+  const nodes = b.filter((v, i) => i % 2 === 1 && v === 0).length;
+  const flat = pk.every((v) => v === pk[0]);
+  return { nodes, pass: nodes === CARD_Q / 2 && flat && b.filter((_, i) => i % 2 === 0).every((v) => v === b[0]) };
+})();

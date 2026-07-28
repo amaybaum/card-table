@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { swap, enumerate, dealHand, NBINS, FRINGE, SLIT_L, SLIT_R,
+import { swap, enumerate, dealHand, dealCardHand, cardDist, CARD_Q, CARD_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
          fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, TEST_LABEL, SLIT_TEST } from "./engine.js";
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
@@ -11,8 +11,8 @@ export default function CardTable() {
   const [why, setWhy] = useState({});
   // cards: two-bin screen, separate accumulation per peek setting
   const [peekMode, setPeekMode] = useState(false);
-  const [cardsOff, setCardsOff] = useState([0, 0]);   // [match, nomatch], peek OFF
-  const [cardsOn, setCardsOn] = useState([0, 0]);     // peek ON
+  const [cardsOff, setCardsOff] = useState(Array(CARD_Q).fill(0));   // hands per offset, peek OFF
+  const [cardsOn, setCardsOn] = useState(Array(CARD_Q).fill(0));     // peek ON
   const [lastHand, setLastHand] = useState(null);
   // slit: 25-bin screen, separate accumulation per detector setting
   const [detector, setDetector] = useState(false);
@@ -30,7 +30,7 @@ export default function CardTable() {
   function playCards(n) {
     const upd = (bins) => {
       const a = bins.slice(); let last = null;
-      for (let i = 0; i < n; i++) { const h = dealHand(peekMode, rng.current); a[h.match ? 0 : 1]++; last = h; }
+      for (let i = 0; i < n; i++) { const h = dealCardHand(peekMode, rng.current); a[h.offset]++; last = h; }
       setLastHand(last); return a;
     };
     peekMode ? setCardsOn(upd) : setCardsOff(upd);
@@ -50,9 +50,9 @@ export default function CardTable() {
   const handStory = (h) => {
     if (!h) return null;
     const steps = insp
-      ? h.trace.map((t) => `${t.label}: you ${cname(t.v)} / hidden ${cname(t.h)}`).join(" \u2192 ")
-      : `dealt ${cname(h.dealt)} \u2192 swap \u2192 ${h.peeked ? `peek (${cname(h.trace[2].peeked)}, burned) \u2192 ` : ""}swap \u2192 ${cname(h.final)}`;
-    return `last hand: ${steps} — ${h.match ? "MATCH" : "NO MATCH"}, deterministically`;
+      ? `dealt ${h.dealt}, hidden ${h.trace[0].h} \u2192 +${h.trace[0].h} \u2192 ${h.peeked ? `peek (${h.trace[2].peeked}, burned; fresh ${h.trace[2].v}) \u2192 ` : ""}+${h.trace[0].h} \u2192 ${h.final}`
+      : `dealt ${h.dealt} \u2192 add hidden \u2192 ${h.peeked ? "peek (burned, replaced) \u2192 " : ""}add hidden \u2192 ${h.final}`;
+    return `last hand: ${steps} — moved ${h.offset}, deterministically`;
   };
 
   return (
@@ -83,14 +83,14 @@ export default function CardTable() {
             {rulesOpen && (
               <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
                 <Rule n={1} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<>Each hand: you get one card, red or black, even odds. A <b>hidden card</b> lies beside it. Question: <i>after two shuffles, does your card match your deal?</i></>}
+                  text={<>Each hand: you get one card, rank 0–15, even odds. A <b>hidden card</b> (rank 0–15) lies beside it. Question: <i>after two shuffles, how far did your rank move?</i></>}
                   whyText={<>The deal is the <b>only randomness in the game</b> — it stands for not knowing the world's starting conditions. Everything after is fixed by the rules, so there are no dice to blame the strangeness on. The hidden card is the point: the world contains more than you can see, and the rules use that part too.</>} />
                 <Rule n={2} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<>The only move is the <b>shuffle: your card and the hidden card trade places.</b> Not random. Each hand is: deal, swap, swap, showdown.</>}
-                  whyText={<><b>Deterministic</b>: same input, same result — so probability can only come from what you can't see. <b>Reversible</b>: a swap undoes itself, so information can hide but never dies. The swap is the smallest move coupling what you see to what you don't; the framework's real physics is built from exactly these two properties.</>} />
+                  text={<>The only move is the <b>shuffle: the hidden card's rank is added to yours</b> (wrapping past 15). Not random, and reversible — subtracting undoes it. Each hand: deal, add, add — <b>the same hidden card, twice</b> — showdown.</>}
+                  whyText={<><b>Deterministic</b>: same input, same result — so probability can only come from what you can't see. <b>Reversible</b>: adding can be subtracted, so information can hide but never dies. And because the same hidden rank acts <b>twice, in step</b>, every hand's total move is doubled — which is why odd distances become impossible below. The stripes are parity, derived from the rules; nothing is engineered.</>} />
                 <Rule n={3} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<><b>Looking costs.</b> With peek ON, the card is looked at between the swaps — and a seen card is burned and replaced with a fresh one.</>}
-                  whyText={<>In this toy, honestly: a house rule — the toy <i>imposes</i> what real physics <i>derives</i>. In physics there is no passive glance: to see a card you must interact with it. <b>Looking is copying</b> — a record now exists somewhere — and the certainty below is <i>made of</i> a correlation: the hidden card remembering your deal. Copying rearranges exactly that correlation. Minds are irrelevant: a machine that photographs the card and shows no one destroys the certainty just as thoroughly. What costs is that the record exists, not that anyone reads it.</>} />
+                  text={<><b>Looking costs.</b> With peek ON, your card is looked at between the two adds — and a seen card is burned and replaced with a fresh one.</>}
+                  whyText={<>In this toy, honestly: a house rule — the toy <i>imposes</i> what real physics <i>derives</i>. In physics there is no passive glance: to see a card you must interact with it. <b>Looking is copying</b> — a record now exists somewhere — and the stripes below are <i>made of</i> a correlation: the same hidden rank acting twice in step. Copying your card mid-hand breaks the lockstep, and the forbidden bins fill in. Minds are irrelevant: a machine that photographs the card and shows no one destroys the certainty just as thoroughly. What costs is that the record exists, not that anyone reads it.</>} />
               </ol>
             )}
           </div>
@@ -109,9 +109,9 @@ export default function CardTable() {
         {/* THE CARD TABLE — same shape as the slit: toggle, fire, two-bin screen */}
         {mode === "cards" && (() => {
           const bins = peekMode ? cardsOn : cardsOff;
-          const total = bins[0] + bins[1];
-          const peak = Math.max(1, bins[0], bins[1]);
-          const offN = cardsOff[0] + cardsOff[1], onN = cardsOn[0] + cardsOn[1];
+          const total = bins.reduce((a, b) => a + b, 0);
+          const peak = Math.max(1, ...bins);
+          const offN = cardsOff.reduce((a, b) => a + b, 0), onN = cardsOn.reduce((a, b) => a + b, 0);
           return (
             <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
@@ -120,28 +120,29 @@ export default function CardTable() {
                 </button>
                 <button onClick={() => playCards(1)} style={btn(insp)}>play 1 hand</button>
                 <button onClick={() => playCards(100)} style={btn(insp)}>play 100</button>
-                <button onClick={() => { setCardsOff([0, 0]); setCardsOn([0, 0]); setLastHand(null); }} style={btn(insp)}>reset</button>
+                <button onClick={() => { setCardsOff(Array(CARD_Q).fill(0)); setCardsOn(Array(CARD_Q).fill(0)); setLastHand(null); }} style={btn(insp)}>reset</button>
               </div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 24, height: 110, background: insp ? "rgba(35,64,74,.05)" : "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 40px 0" }}>
-                {[0, 1].map((i) => (
-                  <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-                    <div style={{ height: `${(100 * bins[i]) / peak}%`, background: peekMode ? "#c05b52" : gold, borderRadius: "3px 3px 0 0", transition: "height .15s" }} />
-                  </div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 110, background: insp ? "rgba(35,64,74,.05)" : "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
+                {bins.map((v, x) => (
+                  <div key={x} style={{ flex: 1, height: `${(100 * v) / peak}%`, background: peekMode ? "#c05b52" : gold, borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 24, padding: "4px 40px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12 }}>
-                <div style={{ flex: 1, textAlign: "center" }}>MATCH {total > 0 && `— ${bins[0]} (${Math.round((100 * bins[0]) / total)}%)`}</div>
-                <div style={{ flex: 1, textAlign: "center" }}>NO MATCH {total > 0 && `— ${bins[1]} (${Math.round((100 * bins[1]) / total)}%)`}</div>
+              <div style={{ display: "flex", gap: 3, padding: "3px 6px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, opacity: 0.75 }}>
+                {bins.map((_, x) => <div key={x} style={{ flex: 1, textAlign: "center" }}>{x % 4 === 0 ? x : ""}</div>)}
+              </div>
+              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11.5, marginTop: 4, opacity: 0.8, textAlign: "center" }}>
+                how far your rank moved (0 = matched your deal)
               </div>
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, marginTop: 8, opacity: 0.85, minHeight: 16 }}>
                 this screen (peek {peekMode ? "ON" : "OFF"}): {total} hands{lastHand && <><br />{handStory(lastHand)}</>}
               </div>
-              {offN > 20 && onN > 20 && (
+              {offN > 30 && onN > 30 && (
                 <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
-                  Peek OFF: every hand lands in MATCH — <b>NO MATCH is a forbidden bin</b>, a place hands
-                  never go, even though each swap alone is a coin flip. Peek ON: the forbidden bin fills in.
-                  This is a double slit with two bins — flip the tab above and watch the same thing happen
-                  across twenty-five.
+                  Peek OFF: stripes — <b>every odd distance is a forbidden bin</b>, because the hidden rank
+                  acts twice in step and doubles every move. Peek ON: the lockstep breaks and the forbidden
+                  bins fill in. And unlike the slit next door, <b>nothing here was chosen to look quantum</b> —
+                  the stripes follow from &ldquo;add it twice&rdquo; by parity alone. Flip the tab and see the
+                  same physics across twenty-five bins.
                 </div>
               )}
             </div>
@@ -201,7 +202,7 @@ export default function CardTable() {
         {/* audit + boundary */}
         <div style={{ marginTop: 16, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
           <div style={{ fontFamily: "ui-monospace, Menlo, monospace" }}>
-            engine self-test: {ALL_PASS && SLIT_TEST.pass ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" \u00B7 ")} \u00B7 fringe nodes {SLIT_TEST.nodes}) — the engine is ~80 lines in engine.js, unit-tested. Read it: there is no trick to find.
+            engine self-test: {ALL_PASS && SLIT_TEST.pass && CARD_TEST.pass ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" \u00B7 ")} · fringe nodes {SLIT_TEST.nodes} · card stripes {CARD_TEST.nodes}) — the engine is ~80 lines in engine.js, unit-tested. Read it: there is no trick to find.
           </div>
           <div style={{ marginTop: 8 }}>
             Honest boundary: these are local classical mechanisms. They reproduce interference, indivisibility,
