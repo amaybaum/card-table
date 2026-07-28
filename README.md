@@ -34,3 +34,4 @@ commit, push. Live in about two minutes.** Nothing to build or rename by hand.
 - `tools/build_standalone.py` — optional: generates a single self-contained HTML file
   of the app (CDN React, in-browser Babel) for sharing by email or hosting anywhere
   without a build step. Not used by the deployed site.
+**Derived files**: `index-standalone.html` (offline single-file preview) is generated from `src/` by `tools/build_standalone.py` and is gitignored — never edit or commit it; regenerate it.

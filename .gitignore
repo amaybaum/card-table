@@ -1,0 +1,5 @@
+# derived artifacts — regenerate with tools/build_standalone.py
+index-standalone.html
+# build + deps
+dist/
+node_modules/
