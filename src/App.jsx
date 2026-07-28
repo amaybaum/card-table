@@ -13,7 +13,7 @@ export default function CardTable() {
   const [cardsOff, setCardsOff] = useState(Array(LINE_N).fill(0));   // hands per displacement bin, peek OFF
   const [cardsOn, setCardsOn] = useState(Array(LINE_N).fill(0));     // peek ON
   const [lastHand, setLastHand] = useState(null);
-  // slit: 25-bin screen, separate accumulation per detector setting
+  // slit: NBINS-bin screen (matches the card track width), separate accumulation per detector setting
   const [detector, setDetector] = useState(false);
   const [hitsOff, setHitsOff] = useState(Array(NBINS).fill(0));
   const [hitsOn, setHitsOn] = useState(Array(NBINS).fill(0));
