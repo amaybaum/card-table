@@ -54,7 +54,7 @@ export default function CardTable() {
 
   return (
     <div style={{ minHeight: "100vh", background: world.bg, color: world.ink, transition: "background .4s,color .4s", fontFamily: "Iowan Old Style, Palatino Linotype, Georgia, serif" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "26px 18px 48px" }}>
+      <div style={{ maxWidth: 780, margin: "0 auto", padding: "26px 18px 48px" }}>
 
         <h1 style={{ margin: 0, fontSize: 28 }}>The Card Table</h1>
         <div style={{ fontSize: 13.5, opacity: 0.8, marginTop: 4, lineHeight: 1.5 }}>
@@ -108,12 +108,12 @@ export default function CardTable() {
                 <button onClick={() => playCards(1000)} style={btn()}>play 1000</button>
                 <button onClick={() => { setCardsOff(Array(LINE_N).fill(0)); setCardsOn(Array(LINE_N).fill(0)); setLastHand(null); }} style={btn()}>reset</button>
               </div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 130, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
                 {bins.map((v, x) => (
                   <div key={x} style={{ flex: 1, height: `${(100 * v) / peak}%`, background: peekMode ? "#c05b52" : gold, borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 2, padding: "3px 6px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, opacity: 0.75 }}>
+              <div style={{ display: "flex", gap: 1, padding: "3px 6px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, opacity: 0.75 }}>
                 {bins.map((_, x) => <div key={x} style={{ flex: 1, textAlign: "center" }}>{(x + LINE_LO) % 13 === 0 ? x + LINE_LO : ""}</div>)}
               </div>
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11.5, marginTop: 4, opacity: 0.8, textAlign: "center" }}>
@@ -164,7 +164,7 @@ export default function CardTable() {
                 <button onClick={() => fire(1000)} style={btn()}>fire 1000</button>
                 <button onClick={() => { setHitsOff(Array(NBINS).fill(0)); setHitsOn(Array(NBINS).fill(0)); setLastShot(null); }} style={btn()}>reset</button>
               </div>
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 130, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
                 {hits.map((v, x) => (
                   <div key={x} style={{ flex: 1, height: `${(100 * v) / peak}%`, background: detector ? "#c05b52" : gold, borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
                 ))}
@@ -186,7 +186,7 @@ export default function CardTable() {
                   the lookup tables (counts per bin, fully auditable — chosen to equal the quantum
                   prediction; that such tables <i>exist</i> is the framework's claim):<br/>
                   no record: [{FRINGE.join(",")}]<br/>
-                  slit L: [{SLIT_L.join(",")}] &nbsp; slit R: [{SLIT_R.join(",")}]
+                  slit L: [{SLIT_L.join(",")}] &nbsp; slit R: mirror of L (far field: both slits share one envelope; which slit fired shows up only in the fringes)
                 </div>
               )}
             </div>

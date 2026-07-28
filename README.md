@@ -2,36 +2,52 @@
 
 **Live: https://amaybaum.github.io/card-table/**
 
-A card game with no randomness in its rules — whose odds still behave like quantum
-mechanics. Companion to *The Incompleteness of Observation*, book §1.11
+Two experiments with no randomness in their rules — whose statistics still behave like
+quantum mechanics. Companion to *The Incompleteness of Observation*, book §1.11
 (DOI 10.5281/zenodo.19060318).
 
-Deal a card. A hidden burn card sits beside the deck. The only shuffle is a swap of the
-two. One shuffle randomizes your card completely; two shuffles return it with certainty;
-reasoning street-by-street says 50/50 and is wrong; peeking in the middle makes 50/50
-right again. Then round two makes you the bookmaker, and mispricing the game costs you
-chips at a rate exactly equal to the interference term. Stand up into the inspector's
-seat at any point: every card face up, every step ledgered — there is no trick to find.
-The honest boundary is stated on the page: no card game violates a Bell inequality; that
-part belongs to the framework, not the toy.
+**The card table.** Two hidden cards are dealt from a standard 52-card deck; red suits
+(♥♦) move a marker left, black (♠♣) right, by rank — and each card acts **twice**,
+behind the dealer's screen. Played blind, the landing spots form stripes: 52 forbidden
+positions the marker never reaches, under an envelope shaped by the deck's own make-up —
+all of it derived from the stated rules, nothing engineered. Flip peek ON (each hidden
+card is inspected between its two moves, burned, and replaced from the remaining deck)
+and the stripes die: the forbidden positions fill in and the pile smooths toward a bell
+curve — decoherence as the central limit theorem switching on. Even the outermost bins
+are coherence-only: ±52 takes two same-colour kings acting in step, and no peeked hand
+can get there.
+
+**The double slit.** The same grammar at the same 105-bin resolution: fire one particle
+or a thousand, toggle the slit detector, and watch fringes with 14 exact nodes collapse
+into one smooth pile the moment a record of the path exists. Here the lookup tables are
+*chosen* to equal the quantum prediction — and printed on the page; that such
+deterministic tables exist at all is the framework's claim.
+
+Everything is face-up: "hidden" means hidden from the player inside the game, not from
+you. The patterns survive your seeing everything, because they depend only on whether
+the game's own record exists (rule 3). The honest boundary is stated on the page: no
+card game violates a Bell inequality; that part belongs to the framework, not the toy.
 
 ## How this repo deploys
 
-Pages is served by GitHub Actions: every push to `main` builds the Vite app and deploys
-it (`.github/workflows/deploy.yml`). **To update the live site: edit `src/App.jsx`,
-commit, push. Live in about two minutes.** Nothing to build or rename by hand.
+Pages is served by GitHub Actions: every push to `main` runs the tests, builds the Vite
+app, and deploys it (`.github/workflows/deploy.yml`). **To update the live site: edit
+`src/`, commit, push. Live in about two minutes.** A failing test blocks deployment.
 
 ## Layout
 
-- `src/engine.js` — the entire game physics (~80 framework-free lines), exact and
-  auditable. `src/App.jsx` is only the interface.
-- `src/engine.test.js` — unit tests: the odds table proven exhaustively (no statistics),
-  swap involution, determinism, fringe nodes, and every hidden integer of the slit
-  samplers audited against the tables. `npm test` runs them; the deploy workflow runs
-  them before every build, so a failing test blocks deployment.
+- `src/engine.js` — the entire physics (~130 framework-free lines): the two-card swap
+  core, the 52-card line game with exact enumeration over all ordered deals, and the
+  slit tables with their samplers. Exact and auditable; a self-test runs at every page
+  load and reports in the footer.
+- `src/engine.test.js` — unit tests: all 2,652 blind deals verified exhaustively with
+  the deck-order mapping mirrored; both 105-bin distributions checked bin-for-bin
+  against independently computed ground truth; the coherence-only edge bins asserted;
+  swap involution, determinism, symmetry, fringe nodes, and every hidden integer of the
+  slit samplers audited. `npm test` runs them locally.
 - `src/main.jsx`, `index.html`, `vite.config.js`, `package.json` — standard Vite
   scaffolding. `npm install && npm run dev` for local development with live reload.
-- `tools/build_standalone.py` — optional: generates a single self-contained HTML file
-  of the app (CDN React, in-browser Babel) for sharing by email or hosting anywhere
-  without a build step. Not used by the deployed site.
-**Derived files**: `index-standalone.html` (offline single-file preview) is generated from `src/` by `tools/build_standalone.py` and is gitignored — never edit or commit it; regenerate it.
+- `tools/build_standalone.py` — generates `index-standalone.html`, a single
+  self-contained file (CDN React, in-browser Babel) for sharing or offline use.
+  That output is **derived and gitignored**: never edit or commit it; regenerate it.
+  Not used by the deployed site.
