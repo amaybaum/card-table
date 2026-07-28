@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { swap, enumerate, dealHand, dealLineHand, lineDist, LINE_S, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
+import { swap, enumerate, dealHand, dealLineHand, cardLabel, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
          fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, TEST_LABEL, SLIT_TEST } from "./engine.js";
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
@@ -47,8 +47,8 @@ export default function CardTable() {
   const handStory = (h) => {
     if (!h) return null;
     const steps = h.peeked
-      ? `A ${fm(h.cards.a)} then (burned, fresh) ${fm(h.cards.a2)}; B ${fm(h.cards.b)} then (burned, fresh) ${fm(h.cards.b2)}`
-      : `A ${fm(h.cards.a)} twice; B ${fm(h.cards.b)} twice`;
+      ? `${cardLabel(h.cards.a)} then burned → ${cardLabel(h.cards.a2)}; ${cardLabel(h.cards.b)} then burned → ${cardLabel(h.cards.b2)}`
+      : `${cardLabel(h.cards.a)} twice, ${cardLabel(h.cards.b)} twice`;
     return `last hand: ${steps} — marker moved ${fm(h.d)}, deterministically`;
   };
 
@@ -80,13 +80,13 @@ export default function CardTable() {
             {rulesOpen && (
               <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
                 <Rule n={1} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<>Each hand: <b>two hidden cards</b> are dealt, each red or black with rank 1–4 — red moves your marker left, black moves it right. Your marker starts at 0 on a track. Question: <i>where does the marker end up?</i></>}
+                  text={<>Each hand: <b>two hidden cards are dealt from a standard 52-card deck</b>. Red suits (♥♦) move your marker left, black (♠♣) right, by the card's rank — ace 1 up to king 13. The marker starts at 0. Question: <i>where does it end up?</i></>}
                   whyText={<>The deal is the <b>only randomness in the game</b> — it stands for not knowing the world's starting conditions. Everything after is fixed by the rules, so there are no dice to blame the strangeness on. The hidden card is the point: the world contains more than you can see, and the rules use that part too.</>} />
                 <Rule n={2} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<>The only move is the <b>shuffle: a hidden card moves the marker by its rank</b>, behind the dealer's screen. Not random, and reversible — every move can be undone. Each hand is four moves: <b>card A acts twice, then card B acts twice</b> — then showdown.</>}
-                  whyText={<><b>Deterministic</b>: same input, same result — so probability can only come from what you can't see. <b>Reversible</b>: every move can be undone, so information can hide but never dies. Each card acting <b>twice, in step</b> doubles its move — so odd final positions become impossible (the nodes) — and the two doubled cards <b>add</b>, so the allowed positions pile up unevenly (the envelope). Stripes and shape, both derived from the rules; nothing is engineered.</>} />
+                  text={<>The only move is the <b>shuffle: a hidden card moves the marker by its rank</b>, behind the dealer's screen. Not random, and reversible — every move can be undone. Each hand is four moves: <b>the first card acts twice, then the second acts twice</b> — then showdown.</>}
+                  whyText={<><b>Deterministic</b>: same input, same result — so probability can only come from what you can't see. <b>Reversible</b>: every move can be undone, so information can hide but never dies. Each card acting <b>twice, in step</b> doubles its move — so odd final positions become impossible: 52 exact nodes — and the two doubled cards <b>add</b>, so the allowed positions pile into an envelope whose 25 tooth heights are shaped by the deck's own make-up. Stripes and shape, both derived; nothing is engineered.</>} />
                 <Rule n={3} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<><b>Looking costs.</b> With peek ON, each hidden card is inspected between its two moves — and a seen card is burned and replaced with a fresh one.</>}
+                  text={<><b>Looking costs.</b> With peek ON, each hidden card is inspected between its two moves — and a seen card is burned and replaced <b>from the remaining deck</b>.</>}
                   whyText={<>In this toy, honestly: a house rule — the toy <i>imposes</i> what real physics <i>derives</i>. In physics there is no passive glance: to see a card you must interact with it. <b>Looking is copying</b> — a record now exists somewhere — and the pattern below is <i>made of</i> a correlation: each card acting twice in step. Burning a card mid-hand makes the four moves <b>independent</b> — the forbidden bins fill in, and independent moves obey the bell-curve theorem: measurement doesn't just erase the stripes, it makes the world normal. Minds are irrelevant: a machine that photographs the card and shows no one destroys the certainty just as thoroughly. What costs is that the record exists, not that anyone reads it.</>} />
               </ol>
             )}
@@ -105,7 +105,7 @@ export default function CardTable() {
                   peek: {peekMode ? "ON — hidden cards inspected mid-hand" : "OFF — playing blind"}
                 </button>
                 <button onClick={() => playCards(1)} style={btn()}>play 1 hand</button>
-                <button onClick={() => playCards(200)} style={btn()}>play 200</button>
+                <button onClick={() => playCards(1000)} style={btn()}>play 1000</button>
                 <button onClick={() => { setCardsOff(Array(LINE_N).fill(0)); setCardsOn(Array(LINE_N).fill(0)); setLastHand(null); }} style={btn()}>reset</button>
               </div>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 110, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0" }}>
@@ -114,7 +114,7 @@ export default function CardTable() {
                 ))}
               </div>
               <div style={{ display: "flex", gap: 2, padding: "3px 6px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, opacity: 0.75 }}>
-                {bins.map((_, x) => <div key={x} style={{ flex: 1, textAlign: "center" }}>{(x + LINE_LO) % 8 === 0 ? x + LINE_LO : ""}</div>)}
+                {bins.map((_, x) => <div key={x} style={{ flex: 1, textAlign: "center" }}>{(x + LINE_LO) % 13 === 0 ? x + LINE_LO : ""}</div>)}
               </div>
               <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11.5, marginTop: 4, opacity: 0.8, textAlign: "center" }}>
                 where the marker ended up (0 = where it started)
@@ -129,8 +129,10 @@ export default function CardTable() {
                   unevenly (the two doubled cards add). Peek ON: every bin fills <b>and the shape smooths
                   toward a bell curve</b> — with the correlations burned, the four moves are independent,
                   and independence is what bell curves are made of. <b>Decoherence is the central limit
-                  theorem switching on.</b> Nothing here was chosen to look quantum — flip the tab for
-                  the engineered 25-bin version.
+                  theorem switching on.</b> (Even the outermost bins are coherence-only: ±52 takes two
+                  same-colour kings acting in step — a peeked hand, drawing burns from a depleted deck,
+                  can never get there.) Nothing here was chosen to look quantum — flip the tab for the
+                  engineered 25-bin version.
                 </div>
               )}
             </div>
