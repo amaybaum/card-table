@@ -80,7 +80,7 @@ export default function CardTable() {
             {rulesOpen && (
               <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
                 <Rule n={1} why={why} setWhy={setWhy} ink={world.ink}
-                  text={<>Each hand: <b>two hidden cards are dealt from the aces through sixes of a standard deck</b> — a 24-card strip deck. Red suits (♥♦) move your marker left, black (♠♣) right, by the card's rank — ace 1 up to six 6. The marker starts at 0. Question: <i>where does it end up?</i></>}
+                  text={<>Each hand: <b>two hidden cards are dealt from a Euchre deck</b> — the 24 cards 9, 10, J, Q, K, A of a standard deck. Cards count by their order: 9 counts 1, up to ace counting 6. Red suits (♥♦) move your marker left, black (♠♣) right, by that count. The marker starts at 0. Question: <i>where does it end up?</i></>}
                   whyText={<>The deal is the <b>only randomness in the game</b> — it stands for not knowing the world's starting conditions. Everything after is fixed by the rules, so there are no dice to blame the strangeness on. The hidden card is the point: the world contains more than you can see, and the rules use that part too.</>} />
                 <Rule n={2} why={why} setWhy={setWhy} ink={world.ink}
                   text={<>The only move is the <b>shuffle: a hidden card moves the marker by its rank</b>, behind the dealer's screen. Not random, and reversible — every move can be undone. Each hand is four moves: <b>the first card acts twice, then the second acts twice</b> — then showdown.</>}
@@ -151,7 +151,7 @@ export default function CardTable() {
                     builds the envelope — and once the records exist, the four moves are independent,
                     so the pile smooths toward a bell curve. <b>Decoherence is the central limit theorem
                     switching on.</b> (Even the outermost bins are coherence-only: ±24 takes two
-                    same-colour sixes acting in step — a peeked hand, drawing its burns from a
+                    same-colour aces acting in step — a peeked hand, drawing its burns from a
                     depleted deck, can never get there.)
                   </div>
                 </div>

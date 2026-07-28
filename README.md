@@ -6,7 +6,7 @@ Two experiments with no randomness in their rules — whose statistics still beh
 quantum mechanics. Companion to *The Incompleteness of Observation*, book §1.11
 (DOI 10.5281/zenodo.19060318).
 
-**The card table.** Two hidden cards are dealt from the aces through sixes of a standard deck — a 24-card strip deck; red suits
+**The card table.** Two hidden cards are dealt from a Euchre deck — the 24 cards 9, 10, J, Q, K, A of a standard deck, counting by order (9 is 1, ace is 6); red suits
 (♥♦) move a marker left, black (♠♣) right, by rank — and each card acts **twice**,
 behind the dealer's screen. Played blind, the landing spots form stripes: 24 forbidden
 positions the marker never reaches, under an envelope shaped by the deck's own make-up —
@@ -14,7 +14,7 @@ all of it derived from the stated rules, nothing engineered. Flip peek ON (each 
 card is inspected between its two moves, burned, and replaced from the remaining deck)
 and the stripes die: the forbidden positions fill in and the pile smooths toward a bell
 curve — decoherence as the central limit theorem switching on. Even the outermost bins
-are coherence-only: ±24 takes two same-colour sixes acting in step, and no peeked hand
+are coherence-only: ±24 takes two same-colour aces acting in step, and no peeked hand
 can get there.
 
 **The double slit.** The same grammar at the same 49-bin resolution: fire one particle

@@ -73,27 +73,28 @@ export const SLIT_TEST = (() => {
 
 
 /* ------------------------------------------------------------------ */
-/* THE LINE GAME, on a 24-card strip deck (aces through sixes of a     */
-/* standard deck). Two hidden cards are DEALT (without replacement).   */
-/* Red suits move the marker left, black right, by rank (A=1 .. 6).    */
+/* THE LINE GAME, on a Euchre deck: the 24 cards 9,10,J,Q,K,A of a     */
+/* standard deck. Two hidden cards are DEALT (without replacement).    */
+/* Cards count by their order (9=1 .. A=6); red suits move the marker  */
+/* left, black right, by that count.                                   */
 /* EACH CARD ACTS TWICE (A,A,B,B) behind the dealer's screen; screen = */
 /* final marker position, -24..+24. Blind: displacement 2a+2b — 24     */
 /* exact odd nodes under an 11-height envelope shaped by the deck's    */
 /* own make-up. Peek (rule 3, between a card's two moves) burns it;    */
 /* the replacement comes from the REMAINING deck — so the outermost    */
-/* bins (\u00b124, two same-colour sixes in step) are reachable ONLY     */
+/* bins (\u00b124, two same-colour aces in step) are reachable ONLY      */
 /* without measurement.                                                */
 /* ------------------------------------------------------------------ */
 
 export const SUITS = ["\u2660", "\u2665", "\u2666", "\u2663"];
+export const FACES = ["9", "10", "J", "Q", "K", "A"];   // Euchre order; counts 1..6
 export const CARDS = [];
-for (let r = 1; r <= 6; r++)
+for (let v = 1; v <= 6; v++)
   for (let si = 0; si < 4; si++) {
     const red = si === 1 || si === 2;
-    CARDS.push({ r, s: SUITS[si], m: red ? -r : r });
+    CARDS.push({ face: FACES[v - 1], v, s: SUITS[si], m: red ? -v : v });
   }
-export const RANKS = { 1: "A" };
-export const cardLabel = (c) => `${RANKS[c.r] || c.r}${c.s}`;
+export const cardLabel = (c) => `${c.face}${c.s}`;
 export const LINE_LO = -24, LINE_HI = 24, LINE_N = 49;
 function drawFrom(avail, rng) { const k = Math.floor(rng() * avail.length); return avail.splice(k, 1)[0]; }
 export function dealLineHand(peek, rng) {
