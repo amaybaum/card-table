@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
-import { swap, enumerate, dealHand, dealLineHand, cardLabel, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
-         fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, TEST_LABEL, SLIT_TEST } from "./engine.js";
+import { dealLineHand, cardLabel, LINE_LO, LINE_N, NBINS, FRINGE, SLIT_L, SLIT_R,
+         fireBlind, fireL, fireR } from "./engine.js";
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
 
@@ -253,9 +253,6 @@ export default function CardTable() {
 
         {/* audit + boundary */}
         <div style={{ marginTop: 16, fontSize: 12, opacity: 0.85, lineHeight: 1.6 }}>
-          <div style={{ fontFamily: "ui-monospace, Menlo, monospace" }}>
-            engine self-test: {ALL_PASS && SLIT_TEST.pass && LINE_TEST.pass ? "PASS" : "FAIL"} ({SELF_TEST.map((t) => `${TEST_LABEL[t.p]} ${t.got}`).join(" \u00B7 ")} · fringe nodes {SLIT_TEST.nodes} · line nodes {LINE_TEST.nodes}) — the engine is ~80 lines in engine.js, unit-tested. Read it: there is no trick to find.
-          </div>
           <div style={{ marginTop: 8 }}>
             Every hand's hidden cards are laid face-up above the moment it ends — but only
             records made <i>inside</i> a hand (rule 3) touch the pattern.
