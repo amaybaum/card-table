@@ -38,8 +38,7 @@ app, and deploys it (`.github/workflows/deploy.yml`). **To update the live site:
 
 - `src/engine.js` — the entire physics (~130 framework-free lines): the two-card swap
   core, the 52-card line game with exact enumeration over all ordered deals, and the
-  slit tables with their samplers. Exact and auditable; a self-test runs at every page
-  load and reports in the footer.
+  slit tables with their samplers. Exact and auditable.
 - `src/engine.test.js` — unit tests: all 552 blind deals verified exhaustively with
   the deck-order mapping mirrored; both 49-bin distributions checked bin-for-bin
   against independently computed ground truth; the coherence-only edge bins asserted;

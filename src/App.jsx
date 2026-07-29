@@ -195,7 +195,10 @@ export default function CardTable() {
               <div style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 10 }}>
                 Same three rules, bigger hidden card: each particle's landing spot is a <b>deterministic
                 lookup</b> of one hidden number, dealt uniformly. The slit detector is rule 3 at the
-                slits: ON means <b>a record of the path exists</b>.
+                slits: ON means <b>a record of the path exists</b>. One honest difference from the card
+                table: here the lookup tables are <b>engineered</b> — chosen so the pattern equals the
+                quantum prediction. That such deterministic tables exist at all is the framework's
+                claim; they are a dozen lines in engine.js if you want to check.
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
                 <button onClick={() => setDetector(!detector)} style={{ ...btn(), fontWeight: 700, background: detector ? "#c05b52" : "rgba(255,255,255,.12)", color: detector ? "#fff" : "inherit" }}>
@@ -237,14 +240,6 @@ export default function CardTable() {
                   <b> never</b> land. Detector ON: one smooth pile, and the forbidden bins fill in.
                   The only difference is whether a record of the path exists. That is the double slit —
                   and here it is, running on hidden cards.
-                </div>
-              )}
-              {(
-                <div style={{ marginTop: 10, fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11, opacity: 0.8, lineHeight: 1.7 }}>
-                  the lookup tables (counts per bin, fully auditable — chosen to equal the quantum
-                  prediction; that such tables <i>exist</i> is the framework's claim):<br/>
-                  no record: [{FRINGE.join(",")}]<br/>
-                  slit L: [{SLIT_L.join(",")}] &nbsp; slit R: mirror of L (far field: both slits share one envelope; which slit fired shows up only in the fringes)
                 </div>
               )}
             </div>
