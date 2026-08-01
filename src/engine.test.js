@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { swap, enumerate, dealHand, dealLineHand, lineDist, CARDS, LINE_LO, LINE_N, LINE_TEST, NBINS, FRINGE, SLIT_L, SLIT_R,
-         fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, SLIT_TEST } from "./engine.js";
+         fireBlind, fireL, fireR, SELF_TEST, ALL_PASS, SLIT_TEST,
+         CAT_LEVELS, catOdds, DIVISIBLE_ODDS, interferenceRate, dealCatHand, CAT_TEST } from "./engine.js";
 
 const script = (vals) => { let i = 0; return () => vals[i++]; };
 const LO = 0.25, HI = 0.75; // deal a 0 / deal a 1
@@ -106,5 +107,44 @@ describe("the 24-card line game (Euchre deck: 9,10,J,Q,K,A counting 1..6)", () =
   it("symmetry: both distributions exactly even", () => {
     for (const d of [EXPECTED_BLIND, EXPECTED_PEEK])
       for (let x = 0; x < 49; x++) expect(d[x]).toBe(d[48 - x]);
+  });
+});
+
+describe("Schrodinger's cat (the swap core, sealed in a box)", () => {
+  it("exact odds: the endpoints ARE the verified table; the interior is the convex mix", () => {
+    expect(catOdds(0)).toBe(1);
+    expect(catOdds(1)).toBe(0.5);
+    for (const { p } of CAT_LEVELS) expect(catOdds(p)).toBe(1 - p / 2);
+    expect(CAT_TEST.pass).toBe(true);
+  });
+  it("perfect isolation: opening returns the sealed fate for ALL configurations", () => {
+    for (const v of [LO, HI]) for (const h of [LO, HI]) {
+      const hand = dealCatHand(0, script([0.9, v, h]));
+      expect(hand.envLooked).toBe(false);
+      expect(hand.peeked).toBe(false);
+      expect(hand.match).toBe(true);            // the certainty is a theorem, test it as one
+    }
+  });
+  it("an actual cat: the environment always looks; match iff the fresh card equals the deal", () => {
+    let matches = 0;
+    for (const v of [LO, HI]) for (const h of [LO, HI]) for (const f of [LO, HI]) {
+      const hand = dealCatHand(1, script([0.1, v, h, f]));
+      expect(hand.envLooked).toBe(true);
+      expect(hand.match).toBe((v < 0.5) === (f < 0.5));
+      matches += hand.match;
+    }
+    expect(matches).toBe(4);
+  });
+  it("the environment draw precedes the deal; scripted hands are fully deterministic", () => {
+    const a = dealCatHand(0.5, script([0.49, LO, HI, LO]));
+    const b = dealCatHand(0.5, script([0.49, LO, HI, LO]));
+    expect(a).toEqual(b);
+    expect(a.envLooked).toBe(true);
+    const c = dealCatHand(0.5, script([0.51, LO, HI]));
+    expect(c.envLooked).toBe(false);
+    expect(c.match).toBe(true);
+  });
+  it("the divisible sheet's loss rate is the interference term (1-p)/2", () => {
+    for (const { p } of CAT_LEVELS) expect(interferenceRate(p)).toBe((1 - p) / 2);
   });
 });

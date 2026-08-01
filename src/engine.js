@@ -42,6 +42,41 @@ export const ALL_PASS = SELF_TEST.every((t) => t.pass);
 export const TEST_LABEL = { one: "1 shuffle", two: "2 shuffles", peek: "peeked" };
 
 /* ------------------------------------------------------------------ */
+/* SCHRODINGER'S CAT -- the swap core, sealed in a box.  Book SS1.11.  */
+/* The cat's fate is the visible card (0 ALIVE, 1 DEAD) -- definite at */
+/* every moment.  The sealed hour is the two-shuffle protocol: the     */
+/* fate is written into the burn pile and read back (match certain).   */
+/* The environment is rule 3 wearing a lab coat: with probability      */
+/* pEnv a stray photon peeks mid-hour -- record made, card burned --   */
+/* and the read-back breaks.  Exact odds that opening the box shows    */
+/* the fate it was sealed with:  1 - pEnv/2.                           */
+/* The "alive + dead" sheet is the divisible price (1/2): correct for  */
+/* an actual cat (pEnv = 1), money-losing for an engineered cat state. */
+/* ------------------------------------------------------------------ */
+
+export const CAT_LEVELS = [
+  { p: 0,    label: "engineered cat state" },
+  { p: 0.25, label: "good isolation" },
+  { p: 0.5,  label: "leaky box" },
+  { p: 0.75, label: "poor isolation" },
+  { p: 1,    label: "an actual cat" },
+];
+export const catOdds = (p) => 1 - p / 2;              // exact: (1-p)*1 + p*(1/2)
+export const DIVISIBLE_ODDS = 1 / 2;                  // the "alive + dead" sheet
+export const interferenceRate = (p) => catOdds(p) - DIVISIBLE_ODDS;   // = (1-p)/2
+export function dealCatHand(pEnv, rng) {
+  const envLooked = rng() < pEnv;                     // does the world peek this hour?
+  const h = dealHand(envLooked, rng);
+  return { ...h, envLooked, pEnv };
+}
+export const CAT_TEST = (() => {
+  const two = enumerate("two"), pk = enumerate("peek");
+  const ends = catOdds(0) === two.num / two.den && catOdds(1) === pk.num / pk.den;
+  const lin = CAT_LEVELS.every(({ p }) => catOdds(p) === (1 - p) * 1 + p * 0.5);
+  return { ends, lin, pass: ends && lin };
+})();
+
+/* ------------------------------------------------------------------ */
 /* DOUBLE SLIT — same species of engine, bigger hidden card.           */
 /* A particle's landing bin is a deterministic lookup of one hidden    */
 /* integer, drawn uniformly (the deal). The tables below were CHOSEN   */

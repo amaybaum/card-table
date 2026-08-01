@@ -2,7 +2,7 @@
 
 **Live: https://amaybaum.github.io/card-table/**
 
-Two experiments with no randomness in their rules — whose statistics still behave like
+Three experiments with no randomness in their rules — whose statistics still behave like
 quantum mechanics. Companion to *The Incompleteness of Observation*, book §1.11
 (DOI 10.5281/zenodo.19060318).
 
@@ -16,6 +16,15 @@ and the stripes die: the forbidden positions fill in and the pile smooths toward
 curve — decoherence as the central limit theorem switching on. Even the outermost bins
 are coherence-only: ±24 takes two same-colour aces acting in step, and no peeked hand
 can get there.
+
+**Schrödinger’s cat.** The two-card swap core, sealed in a box (book §1.11): a fate card
+is dealt hidden — definite from the start — the sealed hour writes it into the burn pile
+and reads it back, and opening the box reveals it. A five-stop isolation dial sets the
+probability that the environment peeks mid-hour (rule 3, performed by a stray photon):
+at “engineered cat state” the same-fate rate is exactly 1; at “an actual cat” it is
+exactly ½ — the whole curve is 1 − p/2, drawn as a tick in each column while the
+empirical bars converge to it. The “alive + dead” sheet is the divisible price, and the
+mode shows where it pays and where it loses money at the interference rate (1−p)/2.
 
 **The double slit.** The same grammar at the same 49-bin resolution: fire one particle
 or a thousand, toggle the slit detector, and watch fringes with exact nodes on every odd position collapse
@@ -37,7 +46,8 @@ app, and deploys it (`.github/workflows/deploy.yml`). **To update the live site:
 ## Layout
 
 - `src/engine.js` — the entire physics (~130 framework-free lines): the two-card swap
-  core, the 52-card line game with exact enumeration over all ordered deals, and the
+  core, the sealed-box cat protocol on top of it (exact odds 1 − p/2), the 52-card
+  line game with exact enumeration over all ordered deals, and the
   slit tables with their samplers. Exact and auditable.
 - `src/engine.test.js` — unit tests: all 552 blind deals verified exhaustively with
   the deck-order mapping mirrored; both 49-bin distributions checked bin-for-bin

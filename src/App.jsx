@@ -1,8 +1,10 @@
 import { useState, useRef } from "react";
 import { dealLineHand, cardLabel, LINE_LO, LINE_N, NBINS, FRINGE, SLIT_L, SLIT_R,
-         fireBlind, fireL, fireR } from "./engine.js";
+         fireBlind, fireL, fireR, dealCatHand, CAT_LEVELS, catOdds, DIVISIBLE_ODDS } from "./engine.js";
 
 const cname = (b) => (b === 0 ? "RED" : "BLACK");
+const FATE = ["ALIVE", "DEAD"];
+const CAT_BAR = ["#D8C878", "#D4B171", "#CE9A69", "#C87B5E", "#c05b52"];   // gold draining to clay
 
 function MiniCard({ c, dim }) {
   const red = c.s === "\u2665" || c.s === "\u2666";
@@ -27,6 +29,10 @@ export default function CardTable() {
   const [hitsOff, setHitsOff] = useState(Array(NBINS).fill(0));
   const [hitsOn, setHitsOn] = useState(Array(NBINS).fill(0));
   const [lastShot, setLastShot] = useState(null);
+  // cat: five isolation stops, separate accumulation per stop
+  const [catLevel, setCatLevel] = useState(0);
+  const [catStats, setCatStats] = useState(CAT_LEVELS.map(() => ({ match: 0, total: 0 })));
+  const [lastBox, setLastBox] = useState(null);
   const rng = useRef(Math.random);
 
   const world = { bg: "radial-gradient(ellipse at 50% 30%, #256049 0%, #1E4D3B 55%, #123327 100%)", ink: "#F0EADA", panel: "rgba(0,0,0,.28)" };
@@ -39,6 +45,18 @@ export default function CardTable() {
       setLastHand(last); return a;
     };
     peekMode ? setCardsOn(upd) : setCardsOff(upd);
+  }
+  function openBoxes(n) {
+    const p = CAT_LEVELS[catLevel].p;
+    setCatStats((st) => {
+      const a = st.map((x) => ({ ...x })); let last = null;
+      for (let i = 0; i < n; i++) {
+        const h = dealCatHand(p, rng.current);
+        a[catLevel].total++; if (h.match) a[catLevel].match++;
+        last = h;
+      }
+      setLastBox(last); return a;
+    });
   }
   function fire(n) {
     const upd = (arr) => {
@@ -63,12 +81,12 @@ export default function CardTable() {
           Einstein was only half right — God doesn't play dice, but he does play cards.
         </div>
         <div style={{ fontSize: 13.5, opacity: 0.8, marginTop: 4, lineHeight: 1.5 }}>
-          Two experiments with no randomness in their rules — whose odds still behave like quantum mechanics.
+          Three experiments with no randomness in their rules — whose odds still behave like quantum mechanics.
         </div>
 
         {/* mode tabs */}
         <div style={{ display: "flex", gap: 6, marginTop: 16 }}>
-          {[["cards", "The card table"], ["slit", "The double slit"]].map(([k, label]) => (
+          {[["cards", "The card table"], ["slit", "The double slit"], ["cat", "Schrödinger’s cat"]].map(([k, label]) => (
             <button key={k} onClick={() => setMode(k)}
               style={{ flex: 1, padding: "9px 11px", borderRadius: 10, cursor: "pointer", background: world.panel, color: world.ink, fontWeight: 700, fontSize: 13.5, border: mode === k ? "2px solid #C9A227" : "1px solid rgba(128,128,128,.3)", opacity: mode === k ? 1 : 0.75 }}>
               {label}
@@ -177,6 +195,108 @@ export default function CardTable() {
                     switching on.</b> (Even the outermost bins are coherence-only: ±24 takes two
                     same-colour aces acting in step — a peeked hand, drawing its burns from a
                     depleted deck, can never get there.)
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* SCHRODINGER'S CAT */}
+        {mode === "cat" && (
+          <div style={{ background: world.panel, borderRadius: 12, padding: "14px 16px", marginTop: 14 }}>
+            <button onClick={() => setRulesOpen(!rulesOpen)} style={{ background: "none", border: "none", cursor: "pointer", color: world.ink, padding: 0, fontWeight: 700, fontSize: 14 }}>
+              The box, the hour, the world {rulesOpen ? "\u25BE" : "\u25B8"}
+            </button>
+            {rulesOpen && (
+              <ol style={{ margin: "10px 0 2px", paddingLeft: 20, fontSize: 13.5, lineHeight: 1.65 }}>
+                <Rule n={11} why={why} setWhy={setWhy} ink={world.ink}
+                  text={<>The box: a <b>fate card is dealt, hidden</b> — ALIVE or DEAD, definite from the moment of sealing. Sealing the box means <i>you</i> can’t see it; the card doesn’t care.</>}
+                  whyText={<>The deal is the only randomness, and it happens <b>once, at the start</b>. Nothing in this game is ever “both”: the famous alive+dead will turn out to be a <b>price on an odds sheet</b>, not a state of the cat.</>} />
+                <Rule n={12} why={why} setWhy={setWhy} ink={world.ink}
+                  text={<>The sealed hour: the fate card is <b>written into the burn pile and read back</b> — the two swaps of the card table. Left alone, the read-back is perfect: opening the box shows the sealed fate, <b>certainly</b>.</>}
+                  whyText={<>Reversible bookkeeping — information hides but never dies. The certainty is the write-then-read theorem, and the test suite proves it over every configuration, not statistically.</>} />
+                <Rule n={13} why={why} setWhy={setWhy} ink={world.ink}
+                  text={<>The world: with probability set by the dial, <b>a stray photon peeks mid-hour</b> — rule 3, performed by the environment. Record made, fate card burned and replaced. Nobody has to be watching.</>}
+                  whyText={<>An engineered cat state (dial at the left) is a real laboratory regime: nothing looks, and the certainty survives. An actual cat (dial at the right) is peeked <b>constantly</b> — air, warmth, the counter itself — so the “alive+dead” sheet at ½ becomes the <i>correct</i> price. Decoherence is this dial.</>} />
+              </ol>
+            )}
+          </div>
+        )}
+        {mode === "cat" && (() => {
+          const lv = CAT_LEVELS[catLevel];
+          const anyN = catStats.reduce((a, s) => a + s.total, 0);
+          const isoN = catStats[0].total, realN = catStats[CAT_LEVELS.length - 1].total;
+          return (
+            <div style={{ background: world.panel, borderRadius: 14, padding: "16px", marginTop: 14 }}>
+              <div style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 10 }}>
+                A fate is sealed in, an hour passes behind the screen, the box is opened. The question
+                a gambler asks: <b>will the fate at opening match the fate that was sealed?</b> The
+                “alive + dead” story prices that bet at ½. Play the columns and see which sheet
+                pays — the answer depends on the dial.
+              </div>
+              <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+                {CAT_LEVELS.map((L, i) => (
+                  <button key={i} onClick={() => setCatLevel(i)}
+                    style={{ flex: 1, minWidth: 88, padding: "7px 6px", borderRadius: 9, cursor: "pointer", background: world.panel, color: world.ink, fontWeight: 700, fontSize: 11.5, border: catLevel === i ? "2px solid #C9A227" : "1px solid rgba(128,128,128,.3)", opacity: catLevel === i ? 1 : 0.75 }}>
+                    {L.label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <button onClick={() => openBoxes(1)} style={btn()}>seal &amp; open 1 box</button>
+                <button onClick={() => openBoxes(1000)} style={btn()}>1000 boxes</button>
+                <button onClick={() => { setCatStats(CAT_LEVELS.map(() => ({ match: 0, total: 0 }))); setLastBox(null); }} style={btn()}>reset</button>
+                <span style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, opacity: 0.85 }}>
+                  photon odds this hour: {Math.round(lv.p * 100)}%
+                </span>
+              </div>
+              <div style={{ position: "relative", height: 150, background: "rgba(0,0,0,.25)", borderRadius: 8, padding: "6px 6px 0", display: "flex", gap: 8 }}>
+                <div style={{ position: "absolute", left: 6, right: 6, bottom: "50%", borderTop: "1px dashed rgba(240,234,218,.55)" }} />
+                <div style={{ position: "absolute", right: 10, bottom: "51%", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 9.5, opacity: 0.7 }}>the “alive+dead” sheet: ½</div>
+                {CAT_LEVELS.map((L, i) => {
+                  const s = catStats[i];
+                  const frac = s.total ? s.match / s.total : 0;
+                  const exact = catOdds(L.p);
+                  return (
+                    <div key={i} onClick={() => setCatLevel(i)} style={{ flex: 1, position: "relative", cursor: "pointer", outline: catLevel === i ? "1px solid rgba(201,162,39,.8)" : "none", borderRadius: 4 }}>
+                      <div style={{ position: "absolute", bottom: 0, left: "14%", right: "14%", height: `${100 * frac}%`, background: CAT_BAR[i], borderRadius: "2px 2px 0 0", transition: "height .15s" }} />
+                      <div style={{ position: "absolute", left: "6%", right: "6%", bottom: `${100 * exact}%`, borderTop: "2px solid rgba(240,234,218,.95)" }} />
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 8, padding: "3px 6px 0", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 10, opacity: 0.8 }}>
+                {CAT_LEVELS.map((L, i) => (
+                  <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                    {catStats[i].total ? `${Math.round((100 * catStats[i].match) / catStats[i].total)}%` : "—"}
+                    <span style={{ opacity: 0.6 }}> · {catStats[i].total}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontFamily: "ui-monospace, Menlo, monospace", fontSize: 11.5, marginTop: 4, opacity: 0.8, textAlign: "center" }}>
+                same-fate rate per isolation setting — tick: the exact law 1 − p/2 · dashes: the divisible price
+              </div>
+              {lastBox && (
+                <div style={{ marginTop: 8, fontFamily: "ui-monospace, Menlo, monospace", fontSize: 12, lineHeight: 1.6, opacity: 0.9 }}>
+                  last box: sealed <b>{FATE[lastBox.dealt]}</b> — the hour passes{lastBox.envLooked ? " — a stray photon looked: record made, fate card burned and replaced" : ", unobserved"} — opened: <b>{FATE[lastBox.final]}</b> — {lastBox.match ? "same fate" : "fate changed"}{lastBox.envLooked ? "" : ", deterministically"}
+                </div>
+              )}
+              {isoN > 30 && realN > 30 && (
+                <div style={{ marginTop: 10, fontSize: 13, lineHeight: 1.6 }}>
+                  The cat was never alive-and-dead: the fate card is definite in every hand, sealed to
+                  opened. “Alive + dead” is the <b>divisible odds sheet</b> — the ½ a gambler must
+                  quote when the hour’s bookkeeping runs through cards that nothing has looked at —
+                  and at perfect isolation that sheet <b>loses money</b> at exactly the interference
+                  rate, (1−p)/2 per box. Slide right and the world does the looking for you: each
+                  stray photon is rule 3 without a mind attached, and by “an actual cat” the
+                  divisible price is simply correct. Opening the box never decides the fate; it reveals
+                  it — what costs is a record <i>during</i> the hour, whoever’s photon makes it.
+                  <div style={{ marginTop: 8 }}>
+                    The left column is not fiction: record-holding experiments hold ever-larger
+                    “cats” — thousands of atoms at once — in exactly that column, and the book’s
+                    registered wager (§1.6, §4.5) is that no scale ever redraws it. One box, one
+                    cat: a single-system story, exactly this toy’s home turf.
                   </div>
                 </div>
               )}
